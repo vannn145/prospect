@@ -4,7 +4,9 @@ const cors = require('cors');
 require('dotenv').config();
 
 const { initDatabase } = require('./database/initDb');
+const authRoutes = require('./routes/authRoutes');
 const companyRoutes = require('./routes/companyRoutes');
+const { requireAuth } = require('./services/authService');
 
 const app = express();
 
@@ -22,8 +24,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/api', companyRoutes);
-app.use('/', companyRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
+
+app.use('/api', requireAuth, companyRoutes);
+app.use('/', requireAuth, companyRoutes);
 
 app.use((error, req, res, next) => {
   console.error(error);

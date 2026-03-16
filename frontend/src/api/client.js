@@ -1,9 +1,14 @@
+import { getAuthToken } from '../auth/session';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 async function request(path, options = {}) {
+  const token = getAuthToken();
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -12,10 +17,23 @@ async function request(path, options = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(data?.error || 'Falha ao processar requisição.');
+    const error = new Error(data?.error || 'Falha ao processar requisição.');
+    error.statusCode = response.status;
+    throw error;
   }
 
   return data;
+}
+
+export async function login(payload) {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchCurrentUser() {
+  return request('/auth/me');
 }
 
 export async function fetchStats() {

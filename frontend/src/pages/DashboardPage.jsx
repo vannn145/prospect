@@ -54,7 +54,7 @@ async function copyText(text) {
   document.body.removeChild(textarea);
 }
 
-function DashboardPage({ onOpenKanban }) {
+function DashboardPage({ onOpenKanban, onLogout, authUser }) {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [companies, setCompanies] = useState([]);
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -263,14 +263,28 @@ function DashboardPage({ onOpenKanban }) {
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6">
         <header className="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <img src="/logo-keula.svg" alt="Keula" className="h-14 w-auto" />
-            <button
-              type="button"
-              onClick={onOpenKanban}
-              className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-            >
-              Abrir Kanban
-            </button>
+            <div>
+              <img src="/logo-keula.svg" alt="Keula" className="h-14 w-auto" />
+              {authUser?.username && (
+                <p className="mt-2 text-xs text-slate-500">Logado como: {authUser.username}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={onOpenKanban}
+                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+              >
+                Abrir Kanban
+              </button>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
+              >
+                Sair
+              </button>
+            </div>
           </div>
           <p className="mt-3 text-sm text-slate-400">
             Coleta via Google Places API, classificação de presença digital e prospecção manual via WhatsApp.

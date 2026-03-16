@@ -32,7 +32,7 @@ function normalizePayload(draft) {
   };
 }
 
-function KanbanPage({ onOpenDashboard }) {
+function KanbanPage({ onOpenDashboard, onLogout, authUser }) {
   const [cards, setCards] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -129,8 +129,11 @@ function KanbanPage({ onOpenDashboard }) {
               <p className="mt-2 text-sm text-slate-400">
                 Quadro estilo Trello para organizar etapas e anexar informações de cada contato.
               </p>
+              {authUser?.username && (
+                <p className="mt-1 text-xs text-slate-500">Logado como: {authUser.username}</p>
+              )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={loadCards}
@@ -144,6 +147,13 @@ function KanbanPage({ onOpenDashboard }) {
                 className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
               >
                 Voltar ao painel
+              </button>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
+              >
+                Sair
               </button>
             </div>
           </div>

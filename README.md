@@ -95,6 +95,7 @@ Campos principais:
 
 - `GOOGLE_PLACES_API_KEY`
 - `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`
+- `AUTH_USERNAME`, `AUTH_PASSWORD`, `AUTH_JWT_SECRET`
 - `META_WHATSAPP_PHONE_NUMBER_ID`
 - `META_WHATSAPP_ACCESS_TOKEN`
 
@@ -144,6 +145,26 @@ npm run dev
 ```
 
 Front-end padrão: `http://localhost:5173`
+
+## Login
+
+As rotas da API (exceto `/health` e `/api/auth/login`) exigem autenticação.
+
+- Endpoint de login: `POST /api/auth/login`
+- Corpo:
+  ```json
+  {
+    "username": "seu_usuario",
+    "password": "sua_senha"
+  }
+  ```
+
+Variáveis de autenticação no `backend/.env`:
+
+- `AUTH_USERNAME`
+- `AUTH_PASSWORD`
+- `AUTH_JWT_SECRET`
+- `AUTH_TOKEN_EXPIRES_IN` (padrão: `7d`)
 
 ## Rotas da API
 
