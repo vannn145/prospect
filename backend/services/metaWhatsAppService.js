@@ -110,6 +110,7 @@ async function sendMetaWhatsAppMessage({
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to: normalizedToPhone,
+    type: resolvedMode,
   };
 
   if (resolvedMode === 'template') {
@@ -169,8 +170,12 @@ async function sendMetaWhatsAppMessage({
   } catch (error) {
     const providerError = error.response?.data?.error;
     const providerMessage = providerError?.message || error.message;
+    const providerDetails = providerError?.error_data?.details;
+    const fullProviderMessage = providerDetails
+      ? `${providerMessage} (${providerDetails})`
+      : providerMessage;
 
-    const mappedError = new Error(`Meta WhatsApp: ${providerMessage}`);
+    const mappedError = new Error(`Meta WhatsApp: ${fullProviderMessage}`);
     mappedError.statusCode = error.response?.status || 502;
     mappedError.providerError = providerError || null;
     throw mappedError;

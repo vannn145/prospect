@@ -247,7 +247,7 @@ function DashboardPage({ onOpenKanban, onOpenWhatsApp, onLogout, authUser }) {
 
     try {
       const result = await sendMetaWhatsAppToCompany(lead.id, {
-        message: DEFAULT_WHATSAPP_MESSAGE,
+        mode: 'template',
       });
 
       const providerIdMessage = result.messageId ? ` ID: ${result.messageId}` : '';
