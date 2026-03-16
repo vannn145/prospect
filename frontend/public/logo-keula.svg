@@ -1,0 +1,21 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="logoTitle logoDesc">
+  <title id="logoTitle">Logo Keula</title>
+  <desc id="logoDesc">Logo com símbolo geométrico e tipografia do nome Keula.</desc>
+
+  <rect x="40" y="40" width="240" height="240" rx="52" fill="#0F172A"/>
+  <rect x="62" y="62" width="196" height="196" rx="40" fill="#111827"/>
+
+  <path d="M114 103V217H141V172L181 217H216L168 163L212 103H179L141 150V103H114Z" fill="#E2E8F0"/>
+  <path d="M236 96C253 112 264 135 264 160C264 185 253 208 236 224" stroke="#14B8A6" stroke-width="10" stroke-linecap="round"/>
+  <path d="M84 96C67 112 56 135 56 160C56 185 67 208 84 224" stroke="#22C55E" stroke-width="10" stroke-linecap="round"/>
+
+  <text x="330" y="188" fill="#FFFFFF" font-size="132" font-family="Poppins, Inter, Segoe UI, Arial, sans-serif" font-weight="700" letter-spacing="1.5">keula</text>
+  <rect x="332" y="212" width="438" height="10" rx="5" fill="url(#lineGradient)"/>
+
+  <defs>
+    <linearGradient id="lineGradient" x1="332" y1="217" x2="770" y2="217" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+</svg>
