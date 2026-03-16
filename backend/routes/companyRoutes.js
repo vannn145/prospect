@@ -22,6 +22,7 @@ const {
   getMetaWhatsAppConfig,
   sendMetaWhatsAppMessage,
 } = require('../services/metaWhatsAppService');
+const { saveOutboundToInbox } = require('../services/whatsappInboxService');
 
 const router = express.Router();
 
