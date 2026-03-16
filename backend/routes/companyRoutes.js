@@ -152,6 +152,16 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       templateParameters,
     });
 
+    await saveOutboundToInbox({
+      phone: company.phone,
+      profileName: company.name || null,
+      messageId: result.messageId || null,
+      mode: result.mode,
+      templateName: templateName || process.env.META_WHATSAPP_TEMPLATE_NAME || null,
+      textBody: message || null,
+      rawPayload: result.providerResponse || null,
+    });
+
     return res.json({
       message: `Mensagem enviada para ${company.name} com sucesso.`,
       company: {

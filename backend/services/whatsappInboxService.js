@@ -635,10 +635,46 @@ async function processMetaWebhookPayload(payload) {
   };
 }
 
+async function saveOutboundToInbox({ phone, profileName, messageId, mode, templateName, textBody, rawPayload }) {
+  try {
+    const normalizedWaId = normalizeWaId(phone);
+    if (!normalizedWaId) return null;
+
+    const contact = await ensureContact({ waId: normalizedWaId, profileName: profileName || null });
+
+    const isTemplate = mode === 'template';
+    const preview = isTemplate
+      ? `[template: ${templateName || 'prospecao'}]`
+      : (sanitizeText(textBody) || '[mensagem]');
+
+    const stored = await storeMessage({
+      contactId: contact.id,
+      waMessageId: messageId || null,
+      direction: 'outbound',
+      messageType: isTemplate ? 'template' : 'text',
+      textBody: preview,
+      status: 'accepted',
+      rawPayload: rawPayload || null,
+    });
+
+    await updateConversationSnapshot({
+      contactId: contact.id,
+      previewText: preview,
+      unreadDelta: 0,
+    });
+
+    return stored;
+  } catch (err) {
+    console.error('[saveOutboundToInbox] erro ao salvar mensagem no inbox:', err.message);
+    return null;
+  }
+}
+
 module.exports = {
   listInboxConversations,
   getInboxConversationMessages,
   markConversationAsRead,
   sendConversationReply,
+  saveOutboundToInbox,
   processMetaWebhookPayload,
 };
