@@ -6,6 +6,8 @@ require('dotenv').config();
 const { initDatabase } = require('./database/initDb');
 const authRoutes = require('./routes/authRoutes');
 const companyRoutes = require('./routes/companyRoutes');
+const metaWebhookRoutes = require('./routes/metaWebhookRoutes');
+const whatsappInboxRoutes = require('./routes/whatsappInboxRoutes');
 const { requireAuth } = require('./services/authService');
 
 const app = express();
@@ -26,6 +28,9 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/auth', authRoutes);
+app.use('/webhooks/meta/whatsapp', metaWebhookRoutes);
+
+app.use('/api/whatsapp/inbox', requireAuth, whatsappInboxRoutes);
 
 app.use('/api', requireAuth, companyRoutes);
 app.use('/', requireAuth, companyRoutes);

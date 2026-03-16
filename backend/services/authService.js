@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 
 function getAuthUsername() {
@@ -15,6 +17,10 @@ function getJwtSecret() {
 
 function getTokenExpiresIn() {
   return process.env.AUTH_TOKEN_EXPIRES_IN || '7d';
+}
+
+function getEnvFilePath() {
+  return path.join(process.cwd(), '.env');
 }
 
 function timingSafeStringEqual(left, right) {
@@ -51,6 +57,62 @@ function authenticateUser({ username, password }) {
 
   return {
     username: expectedUsername,
+  };
+}
+
+function persistEnvValue(key, value) {
+  process.env[key] = value;
+
+  const envFilePath = getEnvFilePath();
+
+  if (!fs.existsSync(envFilePath)) {
+    return;
+  }
+
+  const lines = fs.readFileSync(envFilePath, 'utf8').split(/\r?\n/);
+  let updated = false;
+
+  const nextLines = lines.map((line) => {
+    if (line.startsWith(`${key}=`)) {
+      updated = true;
+      return `${key}=${value}`;
+    }
+
+    return line;
+  });
+
+  if (!updated) {
+    nextLines.push(`${key}=${value}`);
+  }
+
+  const sanitizedLines = [...nextLines];
+
+  while (sanitizedLines.length > 0 && sanitizedLines[sanitizedLines.length - 1] === '') {
+    sanitizedLines.pop();
+  }
+
+  fs.writeFileSync(envFilePath, `${sanitizedLines.join('\n')}\n`, 'utf8');
+}
+
+function changePassword({ username, currentPassword, newPassword }) {
+  if (!currentPassword || !newPassword) {
+    throw buildAuthError('Informe a senha atual e a nova senha.', 400);
+  }
+
+  if (String(newPassword).length < 6) {
+    throw buildAuthError('A nova senha deve ter pelo menos 6 caracteres.', 400);
+  }
+
+  authenticateUser({ username, password: currentPassword });
+
+  if (timingSafeStringEqual(currentPassword, newPassword)) {
+    throw buildAuthError('A nova senha deve ser diferente da senha atual.', 400);
+  }
+
+  persistEnvValue('AUTH_PASSWORD', newPassword);
+
+  return {
+    username: getAuthUsername(),
   };
 }
 
@@ -107,6 +169,7 @@ function requireAuth(req, res, next) {
 
 module.exports = {
   authenticateUser,
+  changePassword,
   issueAuthToken,
   requireAuth,
 };

@@ -36,6 +36,13 @@ export async function fetchCurrentUser() {
   return request('/auth/me');
 }
 
+export async function changePassword(payload) {
+  return request('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchStats() {
   return request('/stats');
 }
@@ -95,6 +102,31 @@ export async function fetchMetaWhatsAppConfig() {
 
 export async function sendMetaWhatsAppToCompany(companyId, payload = {}) {
   return request(`/companies/${companyId}/whatsapp/send`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchInboxConversations(search = '') {
+  const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+  return request(`/whatsapp/inbox/conversations${query}`);
+}
+
+export async function fetchInboxMessages(waId, limit = 120) {
+  const normalizedWaId = encodeURIComponent(String(waId || '').trim());
+  return request(`/whatsapp/inbox/conversations/${normalizedWaId}/messages?limit=${Number(limit || 120)}`);
+}
+
+export async function markInboxConversationRead(waId) {
+  const normalizedWaId = encodeURIComponent(String(waId || '').trim());
+  return request(`/whatsapp/inbox/conversations/${normalizedWaId}/read`, {
+    method: 'PATCH',
+  });
+}
+
+export async function sendInboxReply(waId, payload = {}) {
+  const normalizedWaId = encodeURIComponent(String(waId || '').trim());
+  return request(`/whatsapp/inbox/conversations/${normalizedWaId}/reply`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });

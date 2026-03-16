@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchKanbanCards, updateKanbanCard } from '../api/client';
+import UserAccountPanel from '../components/UserAccountPanel';
 import { getCategoryLabel, getStatusSiteLabel } from '../utils/labels';
 
 const KANBAN_COLUMNS = [
@@ -32,7 +33,7 @@ function normalizePayload(draft) {
   };
 }
 
-function KanbanPage({ onOpenDashboard, onLogout, authUser }) {
+function KanbanPage({ onOpenDashboard, onOpenWhatsApp, onLogout, authUser }) {
   const [cards, setCards] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -123,38 +124,39 @@ function KanbanPage({ onOpenDashboard, onLogout, authUser }) {
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-[1700px] space-y-6 px-4 py-6 md:px-6">
         <header className="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <img src="/logo-keula.svg" alt="Keula" className="h-14 w-auto" />
               <p className="mt-2 text-sm text-slate-400">
                 Quadro estilo Trello para organizar etapas e anexar informações de cada contato.
               </p>
-              {authUser?.username && (
-                <p className="mt-1 text-xs text-slate-500">Logado como: {authUser.username}</p>
-              )}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={loadCards}
-                className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
-              >
-                Atualizar quadro
-              </button>
-              <button
-                type="button"
-                onClick={onOpenDashboard}
-                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-              >
-                Voltar ao painel
-              </button>
-              <button
-                type="button"
-                onClick={onLogout}
-                className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
-              >
-                Sair
-              </button>
+
+            <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[340px]">
+              <div className="flex flex-wrap gap-2 xl:justify-end">
+                <button
+                  type="button"
+                  onClick={loadCards}
+                  className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
+                >
+                  Atualizar quadro
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenDashboard}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  Voltar ao painel
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenWhatsApp}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  WhatsApp
+                </button>
+              </div>
+              <UserAccountPanel authUser={authUser} onLogout={onLogout} />
             </div>
           </div>
         </header>

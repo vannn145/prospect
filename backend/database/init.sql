@@ -37,3 +37,34 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
 
 CREATE INDEX IF NOT EXISTS idx_kanban_cards_stage ON kanban_cards(stage);
 CREATE INDEX IF NOT EXISTS idx_kanban_cards_updated_at ON kanban_cards(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS whatsapp_contacts (
+  id BIGSERIAL PRIMARY KEY,
+  wa_id TEXT NOT NULL UNIQUE,
+  profile_name TEXT,
+  phone_display TEXT,
+  company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL,
+  unread_count INTEGER NOT NULL DEFAULT 0,
+  last_message_at TIMESTAMPTZ,
+  last_message_preview TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_contacts_last_message_at ON whatsapp_contacts(last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_contacts_company_id ON whatsapp_contacts(company_id);
+
+CREATE TABLE IF NOT EXISTS whatsapp_messages (
+  id BIGSERIAL PRIMARY KEY,
+  contact_id BIGINT NOT NULL REFERENCES whatsapp_contacts(id) ON DELETE CASCADE,
+  wa_message_id TEXT UNIQUE,
+  direction VARCHAR(20) NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+  message_type VARCHAR(30) NOT NULL DEFAULT 'text',
+  text_body TEXT,
+  status VARCHAR(30) NOT NULL DEFAULT 'received',
+  raw_payload JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_contact_created_at ON whatsapp_messages(contact_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_status ON whatsapp_messages(status);

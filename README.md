@@ -186,6 +186,10 @@ Variáveis de autenticação no `backend/.env`:
 - `PATCH /kanban/cards/:id`
 - `GET /whatsapp/meta/config`
 - `POST /companies/:id/whatsapp/send`
+- `GET /whatsapp/inbox/conversations`
+- `GET /whatsapp/inbox/conversations/:waId/messages`
+- `PATCH /whatsapp/inbox/conversations/:waId/read`
+- `POST /whatsapp/inbox/conversations/:waId/reply`
 
 Também disponíveis com prefixo `/api`, por exemplo: `GET /api/companies`.
 
@@ -258,6 +262,12 @@ Depois de criar seu aplicativo na Meta, preencha no `backend/.env`:
 
 - `META_WHATSAPP_PHONE_NUMBER_ID`
 - `META_WHATSAPP_ACCESS_TOKEN`
+- `META_WHATSAPP_VERIFY_TOKEN` (usado na validação do webhook)
+
+Webhook para receber mensagens inbound da Meta:
+
+- `GET /webhooks/meta/whatsapp` (verificação)
+- `POST /webhooks/meta/whatsapp` (eventos de mensagens/status)
 
 ### Envio direto para um lead
 

@@ -5,6 +5,7 @@ import { clearSession, getAuthToken, getAuthUser, saveSession } from './auth/ses
 import DashboardPage from './pages/DashboardPage';
 import KanbanPage from './pages/KanbanPage';
 import LoginPage from './pages/LoginPage';
+import WhatsAppInboxPage from './pages/WhatsAppInboxPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -93,15 +94,32 @@ function App() {
     );
   }
 
-  return currentPage === 'dashboard' ? (
-    <DashboardPage
-      onOpenKanban={() => setCurrentPage('kanban')}
-      onLogout={handleLogout}
-      authUser={authUser}
-    />
-  ) : (
-    <KanbanPage
+  if (currentPage === 'dashboard') {
+    return (
+      <DashboardPage
+        onOpenKanban={() => setCurrentPage('kanban')}
+        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
+        onLogout={handleLogout}
+        authUser={authUser}
+      />
+    );
+  }
+
+  if (currentPage === 'kanban') {
+    return (
+      <KanbanPage
+        onOpenDashboard={() => setCurrentPage('dashboard')}
+        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
+        onLogout={handleLogout}
+        authUser={authUser}
+      />
+    );
+  }
+
+  return (
+    <WhatsAppInboxPage
       onOpenDashboard={() => setCurrentPage('dashboard')}
+      onOpenKanban={() => setCurrentPage('kanban')}
       onLogout={handleLogout}
       authUser={authUser}
     />

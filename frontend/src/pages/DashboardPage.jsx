@@ -15,6 +15,7 @@ import {
 import LeadsTable from '../components/LeadsTable';
 import SearchForm from '../components/SearchForm';
 import StatCard from '../components/StatCard';
+import UserAccountPanel from '../components/UserAccountPanel';
 
 const DEFAULT_WHATSAPP_MESSAGE = `Olá, tudo bem?
 
@@ -54,7 +55,7 @@ async function copyText(text) {
   document.body.removeChild(textarea);
 }
 
-function DashboardPage({ onOpenKanban, onLogout, authUser }) {
+function DashboardPage({ onOpenKanban, onOpenWhatsApp, onLogout, authUser }) {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [companies, setCompanies] = useState([]);
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -262,42 +263,43 @@ function DashboardPage({ onOpenKanban, onLogout, authUser }) {
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6">
         <header className="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <img src="/logo-keula.svg" alt="Keula" className="h-14 w-auto" />
-              {authUser?.username && (
-                <p className="mt-2 text-xs text-slate-500">Logado como: {authUser.username}</p>
-              )}
+              <p className="mt-3 text-sm text-slate-400">
+                Coleta via Google Places API, classificação de presença digital e prospecção manual via WhatsApp.
+              </p>
+              <p className="mt-1 text-xs text-slate-600">API: {API_BASE_URL}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Meta WhatsApp:{' '}
+                {metaWhatsAppConfig.loading
+                  ? 'verificando...'
+                  : metaWhatsAppConfig.configured
+                  ? `conectado (${metaWhatsAppConfig.defaultMode})`
+                  : 'não configurado'}
+              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={onOpenKanban}
-                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-              >
-                Abrir Kanban
-              </button>
-              <button
-                type="button"
-                onClick={onLogout}
-                className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
-              >
-                Sair
-              </button>
+
+            <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[340px]">
+              <div className="flex flex-wrap gap-2 xl:justify-end">
+                <button
+                  type="button"
+                  onClick={onOpenKanban}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  Abrir Kanban
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenWhatsApp}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  Abrir WhatsApp
+                </button>
+              </div>
+              <UserAccountPanel authUser={authUser} onLogout={onLogout} />
             </div>
           </div>
-          <p className="mt-3 text-sm text-slate-400">
-            Coleta via Google Places API, classificação de presença digital e prospecção manual via WhatsApp.
-          </p>
-          <p className="mt-1 text-xs text-slate-600">API: {API_BASE_URL}</p>
-          <p className="mt-1 text-xs text-slate-500">
-            Meta WhatsApp:{' '}
-            {metaWhatsAppConfig.loading
-              ? 'verificando...'
-              : metaWhatsAppConfig.configured
-              ? `conectado (${metaWhatsAppConfig.defaultMode})`
-              : 'não configurado'}
-          </p>
         </header>
 
         {(errorMessage || successMessage) && (

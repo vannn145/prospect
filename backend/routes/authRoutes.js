@@ -2,6 +2,7 @@ const express = require('express');
 
 const {
   authenticateUser,
+  changePassword,
   issueAuthToken,
   requireAuth,
 } = require('../services/authService');
@@ -27,6 +28,24 @@ router.get('/me', requireAuth, (req, res) => {
   return res.json({
     user: req.user,
   });
+});
+
+router.post('/change-password', requireAuth, (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    const user = changePassword({
+      username: req.user.username,
+      currentPassword,
+      newPassword,
+    });
+
+    return res.json({
+      message: 'Senha alterada com sucesso.',
+      user,
+    });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 module.exports = router;

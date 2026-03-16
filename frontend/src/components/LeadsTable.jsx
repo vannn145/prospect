@@ -112,7 +112,7 @@ function LeadsTable({
               <th className="px-4 py-3 text-left font-semibold text-slate-300">Telefone</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-300">Cidade</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-300">Categoria</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-300">Status do site</th>
+              <th className="min-w-[220px] px-4 py-3 text-left font-semibold text-slate-300">Status do site</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-300">Site</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-300">Instagram</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-300">Ações</th>
@@ -131,15 +131,17 @@ function LeadsTable({
                   <td className="px-4 py-3 text-slate-300">{lead.phone || '-'}</td>
                   <td className="px-4 py-3 text-slate-300">{lead.city}</td>
                   <td className="px-4 py-3 text-slate-300">{getCategoryLabel(lead.category)}</td>
-                <td className="px-4 py-3 text-slate-700">
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(lead.status_site)}`}>
-                    {getStatusSiteLabel(lead.status_site)}
-                  </span>
-                  {lead.possible_no_website && !lead.contacted && (
-                    <span className="ml-2 inline-flex rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700">
-                      prioritário
+                <td className="min-w-[220px] px-4 py-3 align-middle text-slate-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(lead.status_site)}`}>
+                      {getStatusSiteLabel(lead.status_site)}
                     </span>
-                  )}
+                    {lead.possible_no_website && !lead.contacted && (
+                      <span className="inline-flex whitespace-nowrap rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700">
+                        prioritário
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   {lead.website ? (
