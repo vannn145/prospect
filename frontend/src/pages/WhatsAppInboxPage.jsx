@@ -67,6 +67,22 @@ function getInitials(name) {
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
 }
 
+function getLatestInboundMessage(list) {
+  if (!Array.isArray(list) || list.length === 0) {
+    return null;
+  }
+
+  for (let index = list.length - 1; index >= 0; index -= 1) {
+    const message = list[index];
+
+    if (message?.direction === 'inbound') {
+      return message;
+    }
+  }
+
+  return null;
+}
+
 function WhatsAppInboxPage({
   onOpenDashboard,
   onOpenKanban,
@@ -89,6 +105,54 @@ function WhatsAppInboxPage({
   const [successMessage, setSuccessMessage] = useState('');
 
   const messageEndRef = useRef(null);
+  const unreadByWaIdRef = useRef(new Map());
+  const lastInboundMessageIdByWaIdRef = useRef(new Map());
+  const hasLoadedConversationsRef = useRef(false);
+  const audioContextRef = useRef(null);
+
+  const playNotificationSound = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextCtor) {
+      return;
+    }
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextCtor();
+    }
+
+    const context = audioContextRef.current;
+
+    const playBeep = () => {
+      const now = context.currentTime;
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, now);
+
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.22);
+    };
+
+    if (context.state === 'suspended') {
+      context.resume().then(playBeep).catch(() => null);
+      return;
+    }
+
+    playBeep();
+  }, []);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.wa_id === selectedWaId) || null,
@@ -103,7 +167,43 @@ function WhatsAppInboxPage({
 
       try {
         const response = await fetchInboxConversations(activeSearch);
-        setConversations(Array.isArray(response) ? response : []);
+        const nextConversations = Array.isArray(response) ? response : [];
+        let shouldNotify = false;
+
+        if (hasLoadedConversationsRef.current) {
+          for (const conversation of nextConversations) {
+            const waId = conversation?.wa_id;
+
+            if (!waId || waId === selectedWaId) {
+              continue;
+            }
+
+            const previousUnread = Number(unreadByWaIdRef.current.get(waId) || 0);
+            const currentUnread = Number(conversation?.unread_count || 0);
+
+            if (currentUnread > previousUnread) {
+              shouldNotify = true;
+              break;
+            }
+          }
+        }
+
+        const nextUnreadMap = new Map();
+
+        for (const conversation of nextConversations) {
+          if (conversation?.wa_id) {
+            nextUnreadMap.set(conversation.wa_id, Number(conversation?.unread_count || 0));
+          }
+        }
+
+        unreadByWaIdRef.current = nextUnreadMap;
+        hasLoadedConversationsRef.current = true;
+
+        setConversations(nextConversations);
+
+        if (shouldNotify) {
+          playNotificationSound();
+        }
       } catch (error) {
         if (!silent) {
           setErrorMessage(error.message);
@@ -114,7 +214,7 @@ function WhatsAppInboxPage({
         }
       }
     },
-    [activeSearch]
+    [activeSearch, playNotificationSound, selectedWaId]
   );
 
   const loadMessages = useCallback(async (waId, { silent = false } = {}) => {
@@ -129,7 +229,20 @@ function WhatsAppInboxPage({
 
     try {
       const response = await fetchInboxMessages(waId, 180);
-      setMessages(Array.isArray(response?.messages) ? response.messages : []);
+      const nextMessages = Array.isArray(response?.messages) ? response.messages : [];
+      const latestInboundMessage = getLatestInboundMessage(nextMessages);
+      const latestInboundMessageId = latestInboundMessage?.id || null;
+      const previousInboundMessageId = lastInboundMessageIdByWaIdRef.current.get(waId) || null;
+
+      if (latestInboundMessageId) {
+        if (previousInboundMessageId && latestInboundMessageId !== previousInboundMessageId) {
+          playNotificationSound();
+        }
+
+        lastInboundMessageIdByWaIdRef.current.set(waId, latestInboundMessageId);
+      }
+
+      setMessages(nextMessages);
     } catch (error) {
       if (!silent) {
         setErrorMessage(error.message);
@@ -138,6 +251,17 @@ function WhatsAppInboxPage({
       if (!silent) {
         setLoadingMessages(false);
       }
+    }
+  }, [playNotificationSound]);
+
+  useEffect(() => {
+    unreadByWaIdRef.current = new Map();
+    hasLoadedConversationsRef.current = false;
+  }, [activeSearch]);
+
+  useEffect(() => () => {
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => null);
     }
   }, []);
 
