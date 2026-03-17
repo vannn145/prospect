@@ -110,22 +110,40 @@ function WhatsAppInboxPage({
   const hasLoadedConversationsRef = useRef(false);
   const audioContextRef = useRef(null);
 
-  const playNotificationSound = useCallback(() => {
+  const getAudioContext = useCallback(() => {
     if (typeof window === 'undefined') {
-      return;
+      return null;
     }
 
     const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
 
     if (!AudioContextCtor) {
-      return;
+      return null;
     }
 
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContextCtor();
     }
 
-    const context = audioContextRef.current;
+    return audioContextRef.current;
+  }, []);
+
+  const unlockAudioContext = useCallback(() => {
+    const context = getAudioContext();
+
+    if (!context || context.state !== 'suspended') {
+      return;
+    }
+
+    context.resume().catch(() => null);
+  }, [getAudioContext]);
+
+  const playNotificationSound = useCallback(() => {
+    const context = getAudioContext();
+
+    if (!context) {
+      return;
+    }
 
     const playBeep = () => {
       const now = context.currentTime;
@@ -152,7 +170,7 @@ function WhatsAppInboxPage({
     }
 
     playBeep();
-  }, []);
+  }, [getAudioContext]);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.wa_id === selectedWaId) || null,
@@ -258,6 +276,24 @@ function WhatsAppInboxPage({
     unreadByWaIdRef.current = new Map();
     hasLoadedConversationsRef.current = false;
   }, [activeSearch]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleUserInteraction = () => {
+      unlockAudioContext();
+    };
+
+    window.addEventListener('pointerdown', handleUserInteraction, { passive: true });
+    window.addEventListener('keydown', handleUserInteraction);
+
+    return () => {
+      window.removeEventListener('pointerdown', handleUserInteraction);
+      window.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, [unlockAudioContext]);
 
   useEffect(() => () => {
     if (audioContextRef.current) {
