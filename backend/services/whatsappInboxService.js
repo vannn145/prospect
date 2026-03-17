@@ -644,7 +644,7 @@ async function saveOutboundToInbox({ phone, profileName, messageId, mode, templa
 
     const isTemplate = mode === 'template';
     const preview = isTemplate
-      ? `[template: ${templateName || 'prospecao'}]`
+      ? `[template: ${templateName || process.env.META_WHATSAPP_TEMPLATE_NAME || 'saudacao_oficial'}]`
       : (sanitizeText(textBody) || '[mensagem]');
 
     const stored = await storeMessage({
