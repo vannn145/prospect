@@ -21,10 +21,128 @@ const {
 const {
   getMetaWhatsAppConfig,
   sendMetaWhatsAppMessage,
+  normalizePhoneNumber,
 } = require('../services/metaWhatsAppService');
 const { saveOutboundToInbox } = require('../services/whatsappInboxService');
+const { query } = require('../database/db');
 
 const router = express.Router();
+
+const DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES = ['131049', '131026'];
+
+function normalizeDigits(value) {
+  if (value == null) {
+    return null;
+  }
+
+  const digits = String(value).replace(/\D/g, '').replace(/^0+/, '');
+  return digits || null;
+}
+
+function isBlockedFailureCheckEnabled() {
+  const flag = String(process.env.META_WHATSAPP_BLOCK_ON_FAILED_ENABLED || 'true').toLowerCase();
+  return !['false', '0', 'no', 'off'].includes(flag);
+}
+
+function getBlockedFailureCodes() {
+  const raw = String(process.env.META_WHATSAPP_BLOCK_ON_FAILED_CODES || DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES.join(','));
+  const codes = raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return codes.length ? codes : DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES;
+}
+
+function getBlockedFailureLookbackDays() {
+  const parsed = Number(process.env.META_WHATSAPP_BLOCK_FAILED_LOOKBACK_DAYS || 30);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 30;
+  }
+
+  return Math.floor(parsed);
+}
+
+function buildPhoneCandidates(phone) {
+  const candidates = new Set();
+  const normalizedRaw = normalizeDigits(phone);
+  const normalizedForSend = normalizePhoneNumber(phone);
+
+  if (normalizedRaw) {
+    candidates.add(normalizedRaw);
+
+    if (normalizedRaw.startsWith('55') && normalizedRaw.length > 2) {
+      candidates.add(normalizedRaw.slice(2));
+    } else {
+      candidates.add(`55${normalizedRaw}`);
+    }
+  }
+
+  if (normalizedForSend) {
+    candidates.add(normalizedForSend);
+
+    if (normalizedForSend.startsWith('55') && normalizedForSend.length > 2) {
+      candidates.add(normalizedForSend.slice(2));
+    } else {
+      candidates.add(`55${normalizedForSend}`);
+    }
+  }
+
+  return [...candidates].filter((value) => value.length >= 10);
+}
+
+async function findRecentBlockedFailure(phone) {
+  if (!isBlockedFailureCheckEnabled()) {
+    return null;
+  }
+
+  const phoneCandidates = buildPhoneCandidates(phone);
+  if (!phoneCandidates.length) {
+    return null;
+  }
+
+  const blockedCodes = getBlockedFailureCodes();
+  if (!blockedCodes.length) {
+    return null;
+  }
+
+  const lookbackDays = getBlockedFailureLookbackDays();
+
+  const result = await query(
+    `
+      SELECT
+        wc.wa_id,
+        wm.created_at,
+        wm.raw_payload->'errors'->0->>'code' AS error_code,
+        wm.raw_payload->'errors'->0->>'title' AS error_title,
+        wm.raw_payload->'errors'->0->'error_data'->>'details' AS error_details
+      FROM whatsapp_messages wm
+      INNER JOIN whatsapp_contacts wc ON wc.id = wm.contact_id
+      WHERE wm.direction = 'outbound'
+        AND wm.status = 'failed'
+        AND wc.wa_id = ANY($1::text[])
+        AND (wm.raw_payload->'errors'->0->>'code') = ANY($2::text[])
+        AND wm.created_at >= NOW() - make_interval(days => $3::int)
+      ORDER BY wm.created_at DESC
+      LIMIT 1
+    `,
+    [phoneCandidates, blockedCodes, lookbackDays]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    waId: row.wa_id,
+    createdAt: row.created_at,
+    errorCode: row.error_code,
+    errorTitle: row.error_title,
+    errorDetails: row.error_details,
+  };
+}
 
 router.post('/search', async (req, res, next) => {
   try {
@@ -143,6 +261,16 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       templateLanguageCode,
       templateParameters,
     } = req.body || {};
+
+    const blockedFailure = await findRecentBlockedFailure(company.phone);
+
+    if (blockedFailure) {
+      const blockedAt = new Date(blockedFailure.createdAt).toLocaleString('pt-BR');
+      return res.status(409).json({
+        error: `Envio bloqueado para evitar duplicidade: número com falha anterior ${blockedFailure.errorCode} em ${blockedAt}.`,
+        blockedFailure,
+      });
+    }
 
     const result = await sendMetaWhatsAppMessage({
       toPhone: company.phone,
