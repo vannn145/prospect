@@ -99,7 +99,8 @@ function DashboardPage({ onOpenKanban, onOpenWhatsApp, onLogout, authUser }) {
 
     try {
       const response = await fetchCompanies(status);
-      setCompanies(response);
+      const nextCompanies = Array.isArray(response) ? response : [];
+      setCompanies(nextCompanies.filter((company) => !company.contacted));
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -250,8 +251,14 @@ function DashboardPage({ onOpenKanban, onOpenWhatsApp, onLogout, authUser }) {
         mode: 'template',
       });
 
+      await addCompanyToKanban(lead.id);
+      await markCompanyContacted(lead.id);
+
+      setCompanies((current) => current.filter((company) => company.id !== lead.id));
+      await loadStats();
+
       const providerIdMessage = result.messageId ? ` ID: ${result.messageId}` : '';
-      setSuccessMessage(`Mensagem enviada via Meta para ${lead.name}.${providerIdMessage}`);
+      setSuccessMessage(`Mensagem enviada via Meta para ${lead.name}.${providerIdMessage} Lead movida para o Kanban.`);
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
