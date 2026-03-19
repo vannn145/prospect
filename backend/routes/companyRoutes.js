@@ -30,6 +30,11 @@ const router = express.Router();
 
 const DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES = ['131049', '131026', '130472'];
 
+function getDefaultWhatsAppMode() {
+  const mode = String(process.env.META_WHATSAPP_DEFAULT_MODE || 'text').toLowerCase();
+  return mode === 'template' ? 'template' : 'text';
+}
+
 function normalizeDigits(value) {
   if (value == null) {
     return null;
@@ -62,6 +67,51 @@ function getBlockedFailureLookbackDays() {
   }
 
   return Math.floor(parsed);
+}
+
+function normalizeCategoryKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+function getTemplateNameByCategory(category) {
+  const raw = String(process.env.META_WHATSAPP_TEMPLATE_BY_CATEGORY || '').trim();
+
+  if (!raw || !category) {
+    return null;
+  }
+
+  const wantedCategory = normalizeCategoryKey(category);
+  if (!wantedCategory) {
+    return null;
+  }
+
+  const entries = raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  for (const entry of entries) {
+    const separatorIndex = entry.indexOf(':');
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const categoryKey = normalizeCategoryKey(entry.slice(0, separatorIndex));
+    const templateName = entry.slice(separatorIndex + 1).trim();
+
+    if (!templateName) {
+      continue;
+    }
+
+    if (categoryKey === wantedCategory) {
+      return templateName;
+    }
+  }
+
+  return null;
 }
 
 function buildPhoneCandidates(phone) {
@@ -262,6 +312,15 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       templateParameters,
     } = req.body || {};
 
+    const resolvedMode = mode === 'template' || mode === 'text'
+      ? mode
+      : getDefaultWhatsAppMode();
+
+    const categoryTemplateName = getTemplateNameByCategory(company.category);
+    const resolvedTemplateName = resolvedMode === 'template'
+      ? (templateName || categoryTemplateName || process.env.META_WHATSAPP_TEMPLATE_NAME || null)
+      : null;
+
     const blockedFailure = await findRecentBlockedFailure(company.phone);
 
     if (blockedFailure) {
@@ -275,8 +334,8 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
     const result = await sendMetaWhatsAppMessage({
       toPhone: company.phone,
       message,
-      mode,
-      templateName,
+      mode: resolvedMode,
+      templateName: resolvedTemplateName,
       templateLanguageCode,
       templateParameters,
     });
@@ -286,7 +345,7 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       profileName: company.name || null,
       messageId: result.messageId || null,
       mode: result.mode,
-      templateName: templateName || process.env.META_WHATSAPP_TEMPLATE_NAME || null,
+      templateName: resolvedTemplateName,
       textBody: message || null,
       rawPayload: result.providerResponse || null,
     });
@@ -298,6 +357,7 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
         name: company.name,
         phone: company.phone,
       },
+      templateNameUsed: resolvedTemplateName,
       ...result,
     });
   } catch (error) {

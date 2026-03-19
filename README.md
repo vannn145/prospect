@@ -106,6 +106,7 @@ Para envio automático via Meta WhatsApp Cloud API, também configure:
 - `META_WHATSAPP_DEFAULT_MODE` (`text` ou `template`)
 - `META_WHATSAPP_TEMPLATE_NAME` (obrigatório quando usar modo `template`, ex.: `saudacao_oficial`)
 - `META_WHATSAPP_TEMPLATE_LANGUAGE_CODE` (ex.: `pt_BR`)
+- `META_WHATSAPP_TEMPLATE_BY_CATEGORY` (opcional, ex.: `dentist:saudacao_dentista,lawyer:saudacao_advogado,restaurant:saudacao_restaurante`)
 - `META_WHATSAPP_DEFAULT_COUNTRY_CODE` (padrão: `55`)
 - `META_WHATSAPP_BLOCK_ON_FAILED_ENABLED` (`true`/`false`, padrão: `true`)
 - `META_WHATSAPP_BLOCK_ON_FAILED_CODES` (padrão: `131049,131026,130472`)
