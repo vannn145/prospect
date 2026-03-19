@@ -32,9 +32,28 @@ const DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES = ['131049', '131026', '130472'];
 
 const WHATSAPP_SUCCESS_STATUSES = new Set(['sent', 'delivered', 'read']);
 const WHATSAPP_FAILED_STATUS = 'failed';
+const DEFAULT_OPEN_WINDOW_TEXT_TEMPLATE = [
+  'Olá, tudo bem?',
+  '',
+  'Encontrei sua empresa no Google e percebi que vocês ainda não possuem um site profissional ou presença digital forte.',
+  '',
+  'Hoje muitas empresas estão recebendo novos clientes através do Google e do WhatsApp.',
+  '',
+  'Trabalho com criação de sites rápidos e integrados ao WhatsApp que ajudam empresas a aparecer mais no Google e gerar mais clientes.',
+  '',
+  'Se quiser posso te mostrar um exemplo de site para o seu segmento.',
+].join('\n');
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+}
+
+function parseBoolean(value, fallback = false) {
+  if (value == null || value === '') {
+    return fallback;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
 }
 
 function getDefaultWhatsAppMode() {
@@ -76,6 +95,20 @@ function getBlockedFailureLookbackDays() {
   return Math.floor(parsed);
 }
 
+function shouldUseTextInOpenWindow() {
+  return parseBoolean(process.env.META_WHATSAPP_USE_TEXT_IN_OPEN_WINDOW, true);
+}
+
+function getOpenWindowLookbackHours() {
+  const parsed = Number(process.env.META_WHATSAPP_OPEN_WINDOW_LOOKBACK_HOURS || 24);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 24;
+  }
+
+  return Math.min(72, Math.floor(parsed));
+}
+
 function getPostSendWaitMs() {
   const parsed = Number(process.env.META_WHATSAPP_POST_SEND_WAIT_MS || 30000);
 
@@ -101,6 +134,36 @@ function normalizeCategoryKey(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '_');
+}
+
+function decodeEscapedNewlines(value) {
+  return String(value || '').replace(/\\n/g, '\n');
+}
+
+function renderCompanyTemplate(template, company) {
+  if (!template) {
+    return '';
+  }
+
+  return String(template)
+    .replace(/\{\{\s*company_name\s*\}\}/gi, String(company?.name || '').trim())
+    .replace(/\{\{\s*city\s*\}\}/gi, String(company?.city || '').trim())
+    .replace(/\{\{\s*category\s*\}\}/gi, String(company?.category || '').trim());
+}
+
+function resolveOpenWindowTextMessage({ company, requestedMessage }) {
+  const normalizedRequested = String(requestedMessage || '').trim();
+
+  if (normalizedRequested) {
+    return normalizedRequested;
+  }
+
+  const configuredTemplate = String(process.env.META_WHATSAPP_OPEN_WINDOW_TEXT || '').trim();
+  const template = configuredTemplate
+    ? decodeEscapedNewlines(configuredTemplate)
+    : DEFAULT_OPEN_WINDOW_TEXT_TEMPLATE;
+
+  return renderCompanyTemplate(template, company).trim();
 }
 
 function getTemplateNameByCategory(category) {
@@ -219,6 +282,31 @@ async function findRecentBlockedFailure(phone) {
     errorTitle: row.error_title,
     errorDetails: row.error_details,
   };
+}
+
+async function hasOpenConversationWindow(phone) {
+  const phoneCandidates = buildPhoneCandidates(phone);
+
+  if (!phoneCandidates.length) {
+    return false;
+  }
+
+  const lookbackHours = getOpenWindowLookbackHours();
+
+  const result = await query(
+    `
+      SELECT 1
+      FROM whatsapp_messages wm
+      INNER JOIN whatsapp_contacts wc ON wc.id = wm.contact_id
+      WHERE wm.direction = 'inbound'
+        AND wc.wa_id = ANY($1::text[])
+        AND wm.created_at >= NOW() - make_interval(hours => $2::int)
+      LIMIT 1
+    `,
+    [phoneCandidates, lookbackHours]
+  );
+
+  return Boolean(result.rows[0]);
 }
 
 async function getOutboundMessageStatusByMessageId(messageId) {
@@ -401,16 +489,38 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       templateParameters,
     } = req.body || {};
 
-    const resolvedMode = mode === 'template' || mode === 'text'
+    const requestedMessage = String(message || '').trim();
+
+    let resolvedMode = mode === 'template' || mode === 'text'
       ? mode
       : getDefaultWhatsAppMode();
 
     const categoryTemplateName = getTemplateNameByCategory(company.category);
-    const resolvedTemplateName = resolvedMode === 'template'
+    let resolvedTemplateName = resolvedMode === 'template'
       ? (templateName || categoryTemplateName || process.env.META_WHATSAPP_TEMPLATE_NAME || null)
       : null;
 
-    const blockedFailure = await findRecentBlockedFailure(company.phone);
+    let resolvedMessage = requestedMessage;
+    let openWindowDetected = false;
+    let openWindowFallbackUsed = false;
+
+    if (resolvedMode === 'template' && shouldUseTextInOpenWindow()) {
+      openWindowDetected = await hasOpenConversationWindow(company.phone);
+
+      if (openWindowDetected) {
+        resolvedMode = 'text';
+        resolvedTemplateName = null;
+        resolvedMessage = resolveOpenWindowTextMessage({
+          company,
+          requestedMessage,
+        });
+        openWindowFallbackUsed = true;
+      }
+    }
+
+    const blockedFailure = resolvedMode === 'template'
+      ? await findRecentBlockedFailure(company.phone)
+      : null;
 
     if (blockedFailure) {
       const blockedAt = new Date(blockedFailure.createdAt).toLocaleString('pt-BR');
@@ -422,7 +532,7 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
 
     const result = await sendMetaWhatsAppMessage({
       toPhone: company.phone,
-      message,
+      message: resolvedMessage,
       mode: resolvedMode,
       templateName: resolvedTemplateName,
       templateLanguageCode,
@@ -435,7 +545,7 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       messageId: result.messageId || null,
       mode: result.mode,
       templateName: resolvedTemplateName,
-      textBody: message || null,
+      textBody: resolvedMode === 'text' ? resolvedMessage : null,
       rawPayload: result.providerResponse || null,
     });
 
@@ -453,6 +563,10 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
           name: company.name,
           phone: company.phone,
         },
+        modeUsed: resolvedMode,
+        openWindowDetected,
+        openWindowFallbackUsed,
+        textMessageUsed: resolvedMode === 'text' ? resolvedMessage : null,
         templateNameUsed: resolvedTemplateName,
       });
     }
@@ -464,6 +578,10 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
         name: company.name,
         phone: company.phone,
       },
+      modeUsed: resolvedMode,
+      openWindowDetected,
+      openWindowFallbackUsed,
+      textMessageUsed: resolvedMode === 'text' ? resolvedMessage : null,
       templateNameUsed: resolvedTemplateName,
       deliveryStatus: postSendStatus,
       ...result,
