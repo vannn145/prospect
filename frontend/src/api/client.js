@@ -19,6 +19,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data?.error || 'Falha ao processar requisição.');
     error.statusCode = response.status;
+    error.responseData = data;
     throw error;
   }
 

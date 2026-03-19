@@ -28,7 +28,7 @@ const { query } = require('../database/db');
 
 const router = express.Router();
 
-const DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES = ['131049', '131026', '130472'];
+const DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES = ['131026', '130472'];
 
 const WHATSAPP_SUCCESS_STATUSES = new Set(['sent', 'delivered', 'read']);
 const WHATSAPP_FAILED_STATUS = 'failed';

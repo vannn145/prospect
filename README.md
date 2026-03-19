@@ -118,7 +118,7 @@ Para envio automático via Meta WhatsApp Cloud API, também configure:
 - `META_WHATSAPP_AUTO_RETRY_LOOKBACK_HOURS` (padrão `168`; janela de horas para buscar falha recente elegível)
 - `META_WHATSAPP_DEFAULT_COUNTRY_CODE` (padrão: `55`)
 - `META_WHATSAPP_BLOCK_ON_FAILED_ENABLED` (`true`/`false`, padrão: `true`)
-- `META_WHATSAPP_BLOCK_ON_FAILED_CODES` (padrão: `131049,131026,130472`)
+- `META_WHATSAPP_BLOCK_ON_FAILED_CODES` (padrão: `131026,130472`)
 - `META_WHATSAPP_BLOCK_FAILED_LOOKBACK_DAYS` (padrão: `30`)
 
 Para preparar uma campanha de e-mail a partir dos leads com falha no WhatsApp, rode no `backend`:
