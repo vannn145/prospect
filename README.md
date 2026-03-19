@@ -118,6 +118,27 @@ npm run email:failed-campaign
 
 O script tenta extrair e-mails do site da empresa, salva o melhor e-mail encontrado na tabela `companies` e gera um CSV em `backend/exports/` com colunas prontas para envio (`from_email`, `to_email`, `subject`, `body`).
 
+Para enviar o CSV via SMTP (Hostinger), configure no `backend/.env`:
+
+- `OUTREACH_FROM_EMAIL` (ex.: `contato@impulsestrategy.com.br`)
+- `OUTREACH_SMTP_HOST` (Hostinger: `smtp.hostinger.com`)
+- `OUTREACH_SMTP_PORT` (Hostinger SSL: `465`)
+- `OUTREACH_SMTP_SECURE` (`true` para `465`)
+- `OUTREACH_SMTP_USER` (normalmente o mesmo e-mail remetente)
+- `OUTREACH_SMTP_PASS` (senha da caixa de e-mail)
+- `OUTREACH_EMAIL_REPLY_TO` (opcional)
+- `OUTREACH_EMAIL_SEND_DRY_RUN` (`true` para simular sem enviar)
+- `OUTREACH_EMAIL_SEND_DELAY_MS` (delay entre envios)
+- `OUTREACH_EMAIL_SEND_MAX` (`0` = todos)
+
+Depois, rode:
+
+```powershell
+npm run email:send-campaign
+```
+
+O envio usa o CSV mais recente em `backend/exports/` e gera um relatório em `backend/exports/` com status por destinatário.
+
 ### Front-end
 
 No diretório `frontend`, copie `.env.example` para `.env`:
