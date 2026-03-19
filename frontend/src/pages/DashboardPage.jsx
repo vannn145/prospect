@@ -55,7 +55,7 @@ async function copyText(text) {
   document.body.removeChild(textarea);
 }
 
-function DashboardPage({ onOpenKanban, onOpenWhatsApp, onLogout, authUser }) {
+function DashboardPage({ onOpenKanban, onOpenWhatsApp, onOpenEmail, onLogout, authUser }) {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [companies, setCompanies] = useState([]);
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -302,6 +302,13 @@ function DashboardPage({ onOpenKanban, onOpenWhatsApp, onLogout, authUser }) {
                   className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
                 >
                   Abrir WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenEmail}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  Abrir Email
                 </button>
               </div>
               <UserAccountPanel authUser={authUser} onLogout={onLogout} />

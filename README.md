@@ -22,6 +22,7 @@ Sistema completo para prospecção de empresas que precisam de site ou sistema.
 - Botão "Incluir no Kanban" para transformar uma prospecção em cartão
 - Campos de cartão para anotações, próxima ação, valor de proposta e data de retorno
 - Ações de prospecção via WhatsApp (manual e envio direto pela API da Meta) e marcação de contato
+- Página de E-mail com status de campanha (CSV de envio SMTP) e caixa de entrada IMAP
 - Automação de busca por múltiplas cidades/categorias
 - Priorização de contatos sem site ou com sinais de presença fraca
 
@@ -131,6 +132,14 @@ Para enviar o CSV via SMTP (Hostinger), configure no `backend/.env`:
 - `OUTREACH_EMAIL_SEND_DELAY_MS` (delay entre envios)
 - `OUTREACH_EMAIL_SEND_MAX` (`0` = todos)
 
+Para habilitar a caixa de entrada na página de E-mail, configure também:
+
+- `OUTREACH_IMAP_HOST` (Hostinger: `imap.hostinger.com`)
+- `OUTREACH_IMAP_PORT` (Hostinger SSL: `993`)
+- `OUTREACH_IMAP_SECURE` (`true` para `993`)
+- `OUTREACH_IMAP_USER` (normalmente o mesmo e-mail do SMTP)
+- `OUTREACH_IMAP_PASS` (opcional; se vazio usa `OUTREACH_SMTP_PASS`)
+
 Depois, rode:
 
 ```powershell
@@ -222,6 +231,9 @@ Variáveis de autenticação no `backend/.env`:
 - `GET /whatsapp/inbox/conversations/:waId/messages`
 - `PATCH /whatsapp/inbox/conversations/:waId/read`
 - `POST /whatsapp/inbox/conversations/:waId/reply`
+- `GET /email/overview`
+- `GET /email/inbox/messages`
+- `GET /email/inbox/messages/:uid`
 
 Também disponíveis com prefixo `/api`, por exemplo: `GET /api/companies`.
 

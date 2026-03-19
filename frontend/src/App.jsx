@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { fetchCurrentUser, login } from './api/client';
 import { clearSession, getAuthToken, getAuthUser, saveSession } from './auth/session';
 import DashboardPage from './pages/DashboardPage';
+import EmailPage from './pages/EmailPage';
 import KanbanPage from './pages/KanbanPage';
 import LoginPage from './pages/LoginPage';
 import WhatsAppInboxPage from './pages/WhatsAppInboxPage';
@@ -99,6 +100,7 @@ function App() {
       <DashboardPage
         onOpenKanban={() => setCurrentPage('kanban')}
         onOpenWhatsApp={() => setCurrentPage('whatsapp')}
+        onOpenEmail={() => setCurrentPage('email')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -110,6 +112,19 @@ function App() {
       <KanbanPage
         onOpenDashboard={() => setCurrentPage('dashboard')}
         onOpenWhatsApp={() => setCurrentPage('whatsapp')}
+        onOpenEmail={() => setCurrentPage('email')}
+        onLogout={handleLogout}
+        authUser={authUser}
+      />
+    );
+  }
+
+  if (currentPage === 'email') {
+    return (
+      <EmailPage
+        onOpenDashboard={() => setCurrentPage('dashboard')}
+        onOpenKanban={() => setCurrentPage('kanban')}
+        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -120,6 +135,7 @@ function App() {
     <WhatsAppInboxPage
       onOpenDashboard={() => setCurrentPage('dashboard')}
       onOpenKanban={() => setCurrentPage('kanban')}
+      onOpenEmail={() => setCurrentPage('email')}
       onLogout={handleLogout}
       authUser={authUser}
     />

@@ -132,4 +132,25 @@ export async function sendInboxReply(waId, payload = {}) {
   });
 }
 
+export async function fetchEmailOverview() {
+  return request('/email/overview');
+}
+
+export async function fetchEmailInboxMessages(search = '', limit = 25) {
+  const query = new URLSearchParams();
+
+  if (search?.trim()) {
+    query.set('search', search.trim());
+  }
+
+  query.set('limit', String(Number(limit || 25)));
+
+  return request(`/email/inbox/messages?${query.toString()}`);
+}
+
+export async function fetchEmailInboxMessage(uid) {
+  const normalizedUid = encodeURIComponent(String(uid || '').trim());
+  return request(`/email/inbox/messages/${normalizedUid}`);
+}
+
 export { API_BASE_URL };

@@ -33,7 +33,7 @@ function normalizePayload(draft) {
   };
 }
 
-function KanbanPage({ onOpenDashboard, onOpenWhatsApp, onLogout, authUser }) {
+function KanbanPage({ onOpenDashboard, onOpenWhatsApp, onOpenEmail, onLogout, authUser }) {
   const [cards, setCards] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -154,6 +154,13 @@ function KanbanPage({ onOpenDashboard, onOpenWhatsApp, onLogout, authUser }) {
                   className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
                 >
                   WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenEmail}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  Email
                 </button>
               </div>
               <UserAccountPanel authUser={authUser} onLogout={onLogout} />

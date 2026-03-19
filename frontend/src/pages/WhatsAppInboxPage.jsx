@@ -86,6 +86,7 @@ function getLatestInboundMessage(list) {
 function WhatsAppInboxPage({
   onOpenDashboard,
   onOpenKanban,
+  onOpenEmail,
   onLogout,
   authUser,
 }) {
@@ -430,6 +431,13 @@ function WhatsAppInboxPage({
                   className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
                 >
                   Kanban
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenEmail}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  Email
                 </button>
               </div>
               <UserAccountPanel authUser={authUser} onLogout={onLogout} />
