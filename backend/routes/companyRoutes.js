@@ -30,6 +30,13 @@ const router = express.Router();
 
 const DEFAULT_BLOCKED_WHATSAPP_ERROR_CODES = ['131049', '131026', '130472'];
 
+const WHATSAPP_SUCCESS_STATUSES = new Set(['sent', 'delivered', 'read']);
+const WHATSAPP_FAILED_STATUS = 'failed';
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+}
+
 function getDefaultWhatsAppMode() {
   const mode = String(process.env.META_WHATSAPP_DEFAULT_MODE || 'text').toLowerCase();
   return mode === 'template' ? 'template' : 'text';
@@ -67,6 +74,26 @@ function getBlockedFailureLookbackDays() {
   }
 
   return Math.floor(parsed);
+}
+
+function getPostSendWaitMs() {
+  const parsed = Number(process.env.META_WHATSAPP_POST_SEND_WAIT_MS || 30000);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0;
+  }
+
+  return Math.min(120000, Math.floor(parsed));
+}
+
+function getPostSendPollMs() {
+  const parsed = Number(process.env.META_WHATSAPP_POST_SEND_POLL_MS || 1500);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1500;
+  }
+
+  return Math.min(10000, Math.floor(parsed));
 }
 
 function normalizeCategoryKey(value) {
@@ -192,6 +219,68 @@ async function findRecentBlockedFailure(phone) {
     errorTitle: row.error_title,
     errorDetails: row.error_details,
   };
+}
+
+async function getOutboundMessageStatusByMessageId(messageId) {
+  if (!messageId) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      SELECT
+        wm.status,
+        wm.created_at,
+        wm.raw_payload->'errors'->0->>'code' AS error_code,
+        wm.raw_payload->'errors'->0->>'title' AS error_title,
+        wm.raw_payload->'errors'->0->'error_data'->>'details' AS error_details
+      FROM whatsapp_messages wm
+      WHERE wm.wa_message_id = $1
+      LIMIT 1
+    `,
+    [messageId]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    status: String(row.status || '').toLowerCase(),
+    createdAt: row.created_at,
+    errorCode: row.error_code || null,
+    errorTitle: row.error_title || null,
+    errorDetails: row.error_details || null,
+  };
+}
+
+async function waitForOutboundFinalStatus(messageId) {
+  const waitMs = getPostSendWaitMs();
+  if (!messageId || waitMs <= 0) {
+    return null;
+  }
+
+  const pollMs = getPostSendPollMs();
+  const startedAt = Date.now();
+  let latest = await getOutboundMessageStatusByMessageId(messageId);
+
+  while (Date.now() - startedAt < waitMs) {
+    if (!latest) {
+      await sleep(pollMs);
+      latest = await getOutboundMessageStatusByMessageId(messageId);
+      continue;
+    }
+
+    if (latest.status === WHATSAPP_FAILED_STATUS || WHATSAPP_SUCCESS_STATUSES.has(latest.status)) {
+      return latest;
+    }
+
+    await sleep(pollMs);
+    latest = await getOutboundMessageStatusByMessageId(messageId);
+  }
+
+  return latest;
 }
 
 router.post('/search', async (req, res, next) => {
@@ -350,6 +439,24 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       rawPayload: result.providerResponse || null,
     });
 
+    const postSendStatus = await waitForOutboundFinalStatus(result.messageId || null);
+
+    if (postSendStatus?.status === WHATSAPP_FAILED_STATUS) {
+      const failedCodeText = postSendStatus.errorCode ? ` (${postSendStatus.errorCode})` : '';
+      const failedReason = postSendStatus.errorDetails || postSendStatus.errorTitle || 'Falha retornada pela Meta.';
+
+      return res.status(422).json({
+        error: `Meta não entregou a mensagem${failedCodeText}: ${failedReason}`,
+        deliveryStatus: postSendStatus,
+        company: {
+          id: company.id,
+          name: company.name,
+          phone: company.phone,
+        },
+        templateNameUsed: resolvedTemplateName,
+      });
+    }
+
     return res.json({
       message: `Mensagem enviada para ${company.name} com sucesso.`,
       company: {
@@ -358,6 +465,7 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
         phone: company.phone,
       },
       templateNameUsed: resolvedTemplateName,
+      deliveryStatus: postSendStatus,
       ...result,
     });
   } catch (error) {

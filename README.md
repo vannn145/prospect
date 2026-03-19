@@ -108,6 +108,8 @@ Para envio automático via Meta WhatsApp Cloud API, também configure:
 - `META_WHATSAPP_TEMPLATE_LANGUAGE_CODE` (ex.: `pt_BR`)
 - `META_WHATSAPP_ALLOW_BR_LANDLINE` (`false` por padrão; use `true` para permitir tentativa em fixo BR)
 - `META_WHATSAPP_TEMPLATE_BY_CATEGORY` (opcional, ex.: `dentist:saudacao_dentista,lawyer:saudacao_advogado,restaurant:saudacao_restaurante`)
+- `META_WHATSAPP_POST_SEND_WAIT_MS` (padrão `30000`; aguarda webhook de entrega para já retornar `failed` no endpoint)
+- `META_WHATSAPP_POST_SEND_POLL_MS` (padrão `1500`; intervalo de polling durante a espera pós-envio)
 - `META_WHATSAPP_DEFAULT_COUNTRY_CODE` (padrão: `55`)
 - `META_WHATSAPP_BLOCK_ON_FAILED_ENABLED` (`true`/`false`, padrão: `true`)
 - `META_WHATSAPP_BLOCK_ON_FAILED_CODES` (padrão: `131049,131026,130472`)
