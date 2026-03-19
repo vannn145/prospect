@@ -204,6 +204,23 @@ function getTemplateNameByCategory(category) {
   return null;
 }
 
+function getTemplateFallbackNames() {
+  const raw = String(process.env.META_WHATSAPP_TEMPLATE_FALLBACK_NAMES || '').trim();
+
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function isEcosystemEngagementBlock(errorCode) {
+  return String(errorCode || '').trim() === '131049';
+}
+
 function buildPhoneCandidates(phone) {
   const candidates = new Set();
   const normalizedRaw = normalizeDigits(phone);
@@ -371,6 +388,44 @@ async function waitForOutboundFinalStatus(messageId) {
   return latest;
 }
 
+async function sendAndTrackOutbound({
+  company,
+  mode,
+  message,
+  templateName,
+  templateLanguageCode,
+  templateParameters,
+}) {
+  const result = await sendMetaWhatsAppMessage({
+    toPhone: company.phone,
+    message,
+    mode,
+    templateName,
+    templateLanguageCode,
+    templateParameters,
+  });
+
+  await saveOutboundToInbox({
+    phone: company.phone,
+    profileName: company.name || null,
+    messageId: result.messageId || null,
+    mode: result.mode,
+    templateName,
+    textBody: mode === 'text' ? message : null,
+    rawPayload: result.providerResponse || null,
+  });
+
+  const postSendStatus = await waitForOutboundFinalStatus(result.messageId || null);
+
+  return {
+    result,
+    postSendStatus,
+    modeUsed: mode,
+    templateNameUsed: templateName,
+    textMessageUsed: mode === 'text' ? message : null,
+  };
+}
+
 router.post('/search', async (req, res, next) => {
   try {
     const { city, category, radius, maxPages, includeInstagram } = req.body;
@@ -530,26 +585,68 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
       });
     }
 
-    const result = await sendMetaWhatsAppMessage({
-      toPhone: company.phone,
-      message: resolvedMessage,
+    const attempts = [];
+
+    let sendOutcome = await sendAndTrackOutbound({
+      company,
       mode: resolvedMode,
+      message: resolvedMessage,
       templateName: resolvedTemplateName,
       templateLanguageCode,
       templateParameters,
     });
 
-    await saveOutboundToInbox({
-      phone: company.phone,
-      profileName: company.name || null,
-      messageId: result.messageId || null,
-      mode: result.mode,
-      templateName: resolvedTemplateName,
-      textBody: resolvedMode === 'text' ? resolvedMessage : null,
-      rawPayload: result.providerResponse || null,
+    attempts.push({
+      modeUsed: sendOutcome.modeUsed,
+      templateNameUsed: sendOutcome.templateNameUsed,
+      messageId: sendOutcome.result?.messageId || null,
+      deliveryStatus: sendOutcome.postSendStatus || null,
     });
 
-    const postSendStatus = await waitForOutboundFinalStatus(result.messageId || null);
+    if (
+      sendOutcome.modeUsed === 'template'
+      && sendOutcome.postSendStatus?.status === WHATSAPP_FAILED_STATUS
+      && isEcosystemEngagementBlock(sendOutcome.postSendStatus?.errorCode)
+    ) {
+      const fallbackTemplateNames = getTemplateFallbackNames().filter(
+        (name) => name !== sendOutcome.templateNameUsed
+      );
+
+      for (const fallbackTemplateName of fallbackTemplateNames) {
+        const fallbackOutcome = await sendAndTrackOutbound({
+          company,
+          mode: 'template',
+          message: resolvedMessage,
+          templateName: fallbackTemplateName,
+          templateLanguageCode,
+          templateParameters,
+        });
+
+        attempts.push({
+          modeUsed: fallbackOutcome.modeUsed,
+          templateNameUsed: fallbackOutcome.templateNameUsed,
+          messageId: fallbackOutcome.result?.messageId || null,
+          deliveryStatus: fallbackOutcome.postSendStatus || null,
+        });
+
+        sendOutcome = fallbackOutcome;
+
+        const fallbackFailed = fallbackOutcome.postSendStatus?.status === WHATSAPP_FAILED_STATUS;
+        if (!fallbackFailed) {
+          break;
+        }
+
+        if (!isEcosystemEngagementBlock(fallbackOutcome.postSendStatus?.errorCode)) {
+          break;
+        }
+      }
+    }
+
+    const postSendStatus = sendOutcome.postSendStatus;
+    const result = sendOutcome.result;
+    const finalModeUsed = sendOutcome.modeUsed;
+    const finalTemplateNameUsed = sendOutcome.templateNameUsed;
+    const finalTextMessageUsed = sendOutcome.textMessageUsed;
 
     if (postSendStatus?.status === WHATSAPP_FAILED_STATUS) {
       const failedCodeText = postSendStatus.errorCode ? ` (${postSendStatus.errorCode})` : '';
@@ -563,11 +660,12 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
           name: company.name,
           phone: company.phone,
         },
-        modeUsed: resolvedMode,
+        modeUsed: finalModeUsed,
         openWindowDetected,
         openWindowFallbackUsed,
-        textMessageUsed: resolvedMode === 'text' ? resolvedMessage : null,
-        templateNameUsed: resolvedTemplateName,
+        textMessageUsed: finalTextMessageUsed,
+        templateNameUsed: finalTemplateNameUsed,
+        attempts,
       });
     }
 
@@ -578,11 +676,12 @@ router.post('/companies/:id/whatsapp/send', async (req, res, next) => {
         name: company.name,
         phone: company.phone,
       },
-      modeUsed: resolvedMode,
+      modeUsed: finalModeUsed,
       openWindowDetected,
       openWindowFallbackUsed,
-      textMessageUsed: resolvedMode === 'text' ? resolvedMessage : null,
-      templateNameUsed: resolvedTemplateName,
+      textMessageUsed: finalTextMessageUsed,
+      templateNameUsed: finalTemplateNameUsed,
+      attempts,
       deliveryStatus: postSendStatus,
       ...result,
     });
