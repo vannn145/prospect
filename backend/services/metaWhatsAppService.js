@@ -1,32 +1,90 @@
 const axios = require('axios');
 
+function parseBoolean(value, fallback = false) {
+  if (value == null || value === '') {
+    return fallback;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
+
 /**
  * Valida e normaliza número de telefone para envio via WhatsApp.
- * Aceita números brasileiros com 10-13 dígitos (fixos ou celulares).
+ * Por padrão, aceita somente celular BR (55 + DDD + 9 + 8 dígitos).
+ * Número fixo BR pode ser permitido via META_WHATSAPP_ALLOW_BR_LANDLINE=true.
  * Números estrangeiros são repassados como-está.
  */
-function normalizePhoneNumber(phone) {
+function resolveNormalizedPhone(phone) {
   if (!phone) {
-    return null;
+    return {
+      normalized: null,
+      reason: 'empty',
+    };
   }
 
   const digits = String(phone).replace(/\D/g, '').replace(/^0+/, '');
   if (!digits) {
-    return null;
+    return {
+      normalized: null,
+      reason: 'no_digits',
+    };
   }
 
   const defaultCountryCode = String(process.env.META_WHATSAPP_DEFAULT_COUNTRY_CODE || '55').replace(/\D/g, '') || '55';
+  const allowBrLandline = parseBoolean(process.env.META_WHATSAPP_ALLOW_BR_LANDLINE, false);
 
-  // Se o número tem até 11 dígitos e começa com default (BR), adiciona código país
-  if (digits.length <= 11) {
-    const withCountry = `${defaultCountryCode}${digits}`;
-    // Valida: mínimo 10 dígitos (fixo BR) + 2 dígitos DDD, máximo 13 dígitos (celular BR)
-    const totalDigits = withCountry.length;
-    return totalDigits >= 12 && totalDigits <= 13 ? withCountry : null;
+  const normalized = digits.length <= 11
+    ? `${defaultCountryCode}${digits}`
+    : digits;
+
+  if (normalized.length < 10 || normalized.length > 15) {
+    return {
+      normalized: null,
+      reason: 'invalid_length',
+      digits: normalized,
+    };
   }
 
-  // Número já vem com código país
-  return digits;
+  if (!normalized.startsWith('55')) {
+    return {
+      normalized,
+      reason: 'ok_foreign',
+    };
+  }
+
+  const brSubscriberFirstDigit = normalized[4];
+
+  if (normalized.length === 13 && brSubscriberFirstDigit === '9') {
+    return {
+      normalized,
+      reason: 'ok_br_mobile',
+    };
+  }
+
+  if (normalized.length === 12 && allowBrLandline) {
+    return {
+      normalized,
+      reason: 'ok_br_landline_allowed',
+    };
+  }
+
+  if (normalized.length === 12 && !allowBrLandline) {
+    return {
+      normalized: null,
+      reason: 'br_landline_blocked',
+      digits: normalized,
+    };
+  }
+
+  return {
+    normalized: null,
+    reason: 'br_invalid_mobile',
+    digits: normalized,
+  };
+}
+
+function normalizePhoneNumber(phone) {
+  return resolveNormalizedPhone(phone).normalized;
 }
 
 function getDefaultMode() {
@@ -106,11 +164,23 @@ async function sendMetaWhatsAppMessage({
   templateParameters,
 } = {}) {
   const config = ensureConfigured();
-  const normalizedToPhone = normalizePhoneNumber(toPhone);
+  const normalization = resolveNormalizedPhone(toPhone);
+  const normalizedToPhone = normalization.normalized;
 
   if (!normalizedToPhone) {
-    const error = new Error('Telefone da empresa inválido para envio via WhatsApp.');
+    const detailedMessageByReason = {
+      br_landline_blocked: 'Telefone fixo BR bloqueado para evitar falha de entrega no WhatsApp. Se quiser permitir tentativa, configure META_WHATSAPP_ALLOW_BR_LANDLINE=true.',
+      br_invalid_mobile: 'Telefone BR inválido para WhatsApp (esperado celular com 9 dígitos).',
+      invalid_length: 'Telefone com tamanho inválido para WhatsApp.',
+      no_digits: 'Telefone sem dígitos válidos.',
+      empty: 'Telefone vazio.',
+    };
+
+    const reasonMessage = detailedMessageByReason[normalization.reason] || 'Telefone da empresa inválido para envio via WhatsApp.';
+
+    const error = new Error(reasonMessage);
     error.statusCode = 400;
+    error.validationReason = normalization.reason;
     throw error;
   }
 
