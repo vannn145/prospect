@@ -41,31 +41,6 @@ const EMPTY_STATS = {
   contatadas: 0,
 };
 
-function normalizePhone(value) {
-  if (!value) {
-    return '';
-  }
-
-  return String(value).replace(/\D/g, '');
-}
-
-function buildManualWhatsAppUrl(phone, message) {
-  const digits = normalizePhone(phone);
-
-  if (!digits) {
-    return null;
-  }
-
-  const withCountryCode = digits.startsWith('55') ? digits : `55${digits}`;
-  const encodedText = encodeURIComponent(String(message || '').trim());
-
-  if (!encodedText) {
-    return `https://wa.me/${withCountryCode}`;
-  }
-
-  return `https://wa.me/${withCountryCode}?text=${encodedText}`;
-}
-
 async function copyText(text) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
@@ -285,18 +260,6 @@ function DashboardPage({ onOpenKanban, onOpenWhatsApp, onOpenEmail, onLogout, au
       const providerIdMessage = result.messageId ? ` ID: ${result.messageId}` : '';
       setSuccessMessage(`Mensagem enviada via Meta para ${lead.name}.${providerIdMessage} Lead movida para o Kanban.`);
     } catch (error) {
-      const shouldOpenManualFallback = Boolean(lead.phone && [409, 422].includes(Number(error.statusCode)));
-
-      if (shouldOpenManualFallback) {
-        const manualUrl = buildManualWhatsAppUrl(lead.phone, DEFAULT_WHATSAPP_MESSAGE);
-
-        if (manualUrl) {
-          window.open(manualUrl, '_blank', 'noopener,noreferrer');
-          setErrorMessage(`${error.message} Abri o WhatsApp Web para envio manual desta prospecção.`);
-          return;
-        }
-      }
-
       setErrorMessage(error.message);
     } finally {
       setSendingMetaMessageId(null);
