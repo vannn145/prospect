@@ -1,6 +1,26 @@
 const { query } = require('../database/db');
 const { sendMetaWhatsAppMessage } = require('./metaWhatsAppService');
 
+const DEFAULT_OPEN_WINDOW_TEXT_TEMPLATE = [
+  'Olá, tudo bem?',
+  '',
+  'Encontrei sua empresa no Google e percebi que vocês ainda não possuem um site profissional ou presença digital forte.',
+  '',
+  'Hoje muitas empresas estão recebendo novos clientes através do Google e do WhatsApp.',
+  '',
+  'Trabalho com criação de sites rápidos e integrados ao WhatsApp que ajudam empresas a aparecer mais no Google e gerar mais clientes.',
+  '',
+  'Se quiser posso te mostrar um exemplo de site para o seu segmento.',
+].join('\n');
+
+function parseBoolean(value, fallback = false) {
+  if (value == null || value === '') {
+    return fallback;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
+
 function sanitizeText(value) {
   if (value == null) {
     return null;
@@ -104,6 +124,53 @@ function buildPreview(text) {
   return normalized.length > 160 ? `${normalized.slice(0, 157)}...` : normalized;
 }
 
+function decodeEscapedNewlines(value) {
+  return String(value || '').replace(/\\n/g, '\n');
+}
+
+function renderCompanyTemplate(template, company) {
+  if (!template) {
+    return '';
+  }
+
+  return String(template)
+    .replace(/\{\{\s*company_name\s*\}\}/gi, String(company?.name || '').trim())
+    .replace(/\{\{\s*city\s*\}\}/gi, String(company?.city || '').trim())
+    .replace(/\{\{\s*category\s*\}\}/gi, String(company?.category || '').trim());
+}
+
+function resolveOpenWindowTextMessage(company) {
+  const configuredTemplate = String(process.env.META_WHATSAPP_OPEN_WINDOW_TEXT || '').trim();
+  const template = configuredTemplate
+    ? decodeEscapedNewlines(configuredTemplate)
+    : DEFAULT_OPEN_WINDOW_TEXT_TEMPLATE;
+
+  return renderCompanyTemplate(template, company).trim();
+}
+
+function isAutoRetryOnInboundEnabled() {
+  return parseBoolean(process.env.META_WHATSAPP_AUTO_RETRY_ON_INBOUND_ENABLED, true);
+}
+
+function getAutoRetryLookbackHours() {
+  const parsed = Number(process.env.META_WHATSAPP_AUTO_RETRY_LOOKBACK_HOURS || 168);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 168;
+  }
+
+  return Math.min(720, Math.floor(parsed));
+}
+
+function getAutoRetryFailedCodes() {
+  const raw = String(process.env.META_WHATSAPP_AUTO_RETRY_FAILED_CODES || '131049');
+
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function mapConversation(row) {
   if (!row) {
     return null;
@@ -156,7 +223,7 @@ async function findCompanyByWaId(waId) {
 
   const result = await query(
     `
-      SELECT id, name, phone, city
+      SELECT id, name, phone, city, category
       FROM companies
       WHERE regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') IN (${placeholders})
       ORDER BY contacted ASC, created_at DESC
@@ -166,6 +233,163 @@ async function findCompanyByWaId(waId) {
   );
 
   return result.rows[0] || null;
+}
+
+async function findCompanyById(companyId) {
+  if (!companyId) {
+    return null;
+  }
+
+  const result = await query(
+    `
+      SELECT id, name, phone, city, category
+      FROM companies
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [Number(companyId)]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function findLatestRetryableFailure(contactId) {
+  const failedCodes = getAutoRetryFailedCodes();
+
+  if (!failedCodes.length) {
+    return null;
+  }
+
+  const lookbackHours = getAutoRetryLookbackHours();
+
+  const result = await query(
+    `
+      SELECT
+        wm.id,
+        wm.created_at,
+        wm.raw_payload->'errors'->0->>'code' AS error_code,
+        wm.raw_payload->'errors'->0->>'title' AS error_title,
+        wm.raw_payload->'errors'->0->'error_data'->>'details' AS error_details
+      FROM whatsapp_messages wm
+      WHERE wm.contact_id = $1
+        AND wm.direction = 'outbound'
+        AND wm.status = 'failed'
+        AND (wm.raw_payload->'errors'->0->>'code') = ANY($2::text[])
+        AND wm.created_at >= NOW() - make_interval(hours => $3::int)
+      ORDER BY wm.created_at DESC, wm.id DESC
+      LIMIT 1
+    `,
+    [Number(contactId), failedCodes, lookbackHours]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function hasInboundAutoRetryForFailure(contactId, failedMessageId) {
+  const result = await query(
+    `
+      SELECT 1
+      FROM whatsapp_messages wm
+      WHERE wm.contact_id = $1
+        AND wm.direction = 'outbound'
+        AND wm.raw_payload->'auto_retry'->>'source' = 'inbound_open_window'
+        AND wm.raw_payload->'auto_retry'->>'failed_message_id' = $2
+      LIMIT 1
+    `,
+    [Number(contactId), String(failedMessageId)]
+  );
+
+  return Boolean(result.rows[0]);
+}
+
+async function maybeAutoRetryFailedMessageOnInbound({ contact, inboundMessageId }) {
+  if (!isAutoRetryOnInboundEnabled()) {
+    return {
+      retried: false,
+      reason: 'disabled',
+    };
+  }
+
+  if (!contact?.id || !contact?.wa_id) {
+    return {
+      retried: false,
+      reason: 'invalid_contact',
+    };
+  }
+
+  const failedMessage = await findLatestRetryableFailure(contact.id);
+
+  if (!failedMessage) {
+    return {
+      retried: false,
+      reason: 'no_retryable_failure',
+    };
+  }
+
+  const alreadyRetried = await hasInboundAutoRetryForFailure(contact.id, failedMessage.id);
+
+  if (alreadyRetried) {
+    return {
+      retried: false,
+      reason: 'already_retried',
+    };
+  }
+
+  const company = contact.company_id
+    ? (await findCompanyById(contact.company_id))
+    : (await findCompanyByWaId(contact.wa_id));
+
+  const retryText = resolveOpenWindowTextMessage(company);
+
+  if (!retryText) {
+    return {
+      retried: false,
+      reason: 'empty_retry_text',
+    };
+  }
+
+  const providerResult = await sendMetaWhatsAppMessage({
+    toPhone: contact.wa_id,
+    message: retryText,
+    mode: 'text',
+  });
+
+  const providerStatus = sanitizeText(providerResult?.providerResponse?.messages?.[0]?.message_status) || 'accepted';
+
+  const autoRetryPayload = {
+    ...(providerResult.providerResponse || providerResult || {}),
+    auto_retry: {
+      source: 'inbound_open_window',
+      failed_message_id: String(failedMessage.id),
+      failed_error_code: failedMessage.error_code || null,
+      failed_error_title: failedMessage.error_title || null,
+      failed_error_details: failedMessage.error_details || null,
+      inbound_message_id: sanitizeText(inboundMessageId) || null,
+      triggered_at: new Date().toISOString(),
+    },
+  };
+
+  await storeMessage({
+    contactId: contact.id,
+    waMessageId: providerResult.messageId || null,
+    direction: 'outbound',
+    messageType: 'text',
+    textBody: retryText,
+    status: providerStatus,
+    rawPayload: autoRetryPayload,
+  });
+
+  await updateConversationSnapshot({
+    contactId: contact.id,
+    previewText: retryText,
+    unreadDelta: 0,
+  });
+
+  return {
+    retried: true,
+    messageId: providerResult.messageId || null,
+    status: providerStatus,
+  };
 }
 
 async function ensureContact({ waId, profileName }) {
@@ -534,11 +758,13 @@ async function processMetaWebhookPayload(payload) {
     return {
       inboundStored: 0,
       statusesUpdated: 0,
+      autoRetried: 0,
     };
   }
 
   let inboundStored = 0;
   let statusesUpdated = 0;
+  let autoRetried = 0;
 
   for (const entry of payload.entry) {
     const changes = Array.isArray(entry?.changes) ? entry.changes : [];
@@ -596,6 +822,15 @@ async function processMetaWebhookPayload(payload) {
               previewText: extractedText,
               unreadDelta: 1,
             });
+
+            const retryResult = await maybeAutoRetryFailedMessageOnInbound({
+              contact,
+              inboundMessageId: message?.id,
+            });
+
+            if (retryResult?.retried) {
+              autoRetried += 1;
+            }
           }
         } catch (error) {
           console.error('Erro ao processar mensagem inbound da Meta:', error);
@@ -614,7 +849,7 @@ async function processMetaWebhookPayload(payload) {
           `
             UPDATE whatsapp_messages
             SET status = $2,
-                raw_payload = $3::jsonb
+                raw_payload = COALESCE(raw_payload, '{}'::jsonb) || $3::jsonb
             WHERE wa_message_id = $1
           `,
           [
@@ -632,6 +867,7 @@ async function processMetaWebhookPayload(payload) {
   return {
     inboundStored,
     statusesUpdated,
+    autoRetried,
   };
 }
 
