@@ -1,19 +1,10 @@
 const axios = require('axios');
 
 /**
- * Retorna true somente se o número (já com DDI) for celular brasileiro.
- * Padrão BR celular: 55 + DDD (2) + 9 + numero (8) = 13 dígitos
- * Fixo BR: 55 + DDD (2) + numero (8) = 12 dígitos → rejeitado
- * Números de outros países (DDI != 55) são aceitos sem validação extra.
+ * Valida e normaliza número de telefone para envio via WhatsApp.
+ * Aceita números brasileiros com 10-13 dígitos (fixos ou celulares).
+ * Números estrangeiros são repassados como-está.
  */
-function isBrazilianMobile(normalizedDigits) {
-  if (!normalizedDigits.startsWith('55')) {
-    return true; // país estrangeiro: não validamos
-  }
-  // com DDI 55: celular tem 13 dígitos, fixo tem 12
-  return normalizedDigits.length === 13;
-}
-
 function normalizePhoneNumber(phone) {
   if (!phone) {
     return null;
@@ -26,12 +17,16 @@ function normalizePhoneNumber(phone) {
 
   const defaultCountryCode = String(process.env.META_WHATSAPP_DEFAULT_COUNTRY_CODE || '55').replace(/\D/g, '') || '55';
 
+  // Se o número tem até 11 dígitos e começa com default (BR), adiciona código país
   if (digits.length <= 11) {
     const withCountry = `${defaultCountryCode}${digits}`;
-    return isBrazilianMobile(withCountry) ? withCountry : null;
+    // Valida: mínimo 10 dígitos (fixo BR) + 2 dígitos DDD, máximo 13 dígitos (celular BR)
+    const totalDigits = withCountry.length;
+    return totalDigits >= 12 && totalDigits <= 13 ? withCountry : null;
   }
 
-  return isBrazilianMobile(digits) ? digits : null;
+  // Número já vem com código país
+  return digits;
 }
 
 function getDefaultMode() {
