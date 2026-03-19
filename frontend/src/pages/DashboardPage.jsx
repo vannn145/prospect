@@ -260,6 +260,22 @@ function DashboardPage({ onOpenKanban, onOpenWhatsApp, onOpenEmail, onLogout, au
       const providerIdMessage = result.messageId ? ` ID: ${result.messageId}` : '';
       setSuccessMessage(`Mensagem enviada via Meta para ${lead.name}.${providerIdMessage} Lead movida para o Kanban.`);
     } catch (error) {
+      const metaErrorCode = String(
+        error?.responseData?.deliveryStatus?.errorCode
+        || error?.responseData?.blockedFailure?.errorCode
+        || ''
+      ).trim();
+
+      if (metaErrorCode === '131049') {
+        setErrorMessage('A Meta bloqueou este envio (131049) para este contato. Use o botão verde do WhatsApp (manual) para seguir com a prospecção.');
+        return;
+      }
+
+      if (metaErrorCode === '131047') {
+        setErrorMessage('A Meta bloqueou texto fora da janela de 24h (131047). Use o botão verde do WhatsApp (manual) para continuar o contato.');
+        return;
+      }
+
       setErrorMessage(error.message);
     } finally {
       setSendingMetaMessageId(null);

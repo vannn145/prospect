@@ -182,7 +182,24 @@ function LeadsTable({
                 </td>
                 <td className="space-y-2 px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    {canUseMetaMessaging ? (
+                    <a
+                      href={whatsappLink || '#'}
+                      onClick={!whatsappLink ? (event) => event.preventDefault() : undefined}
+                      target={whatsappLink ? '_blank' : undefined}
+                      rel={whatsappLink ? 'noreferrer' : undefined}
+                      title={whatsappLink ? 'Abrir WhatsApp (manual)' : 'Sem telefone para WhatsApp'}
+                      aria-label={whatsappLink ? 'Abrir WhatsApp (manual)' : 'Sem telefone para WhatsApp'}
+                      aria-disabled={!whatsappLink}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-white ${
+                        whatsappLink
+                          ? 'bg-green-600 hover:bg-green-500'
+                          : 'cursor-not-allowed bg-slate-600'
+                      }`}
+                    >
+                      <IconWhatsapp />
+                    </a>
+
+                    {canUseMetaMessaging && (
                       <button
                         type="button"
                         onClick={() => onSendMetaMessage(lead)}
@@ -192,36 +209,19 @@ function LeadsTable({
                             ? 'Sem telefone para WhatsApp'
                             : isSendingMetaMessage
                             ? 'Enviando mensagem via Meta...'
-                            : 'Enviar mensagem via Meta'
+                            : 'Enviar via Meta API'
                         }
                         aria-label={
                           !lead.phone
                             ? 'Sem telefone para WhatsApp'
                             : isSendingMetaMessage
                             ? 'Enviando mensagem via Meta...'
-                            : 'Enviar mensagem via Meta'
+                            : 'Enviar via Meta API'
                         }
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-green-600 text-white hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-slate-600"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-teal-600 text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-slate-600"
                       >
-                        {isSendingMetaMessage ? <IconLoading /> : <IconWhatsapp />}
+                        {isSendingMetaMessage ? <IconLoading /> : <span className="text-[10px] font-bold leading-none">API</span>}
                       </button>
-                    ) : (
-                      <a
-                        href={whatsappLink || '#'}
-                        onClick={!whatsappLink ? (event) => event.preventDefault() : undefined}
-                        target={whatsappLink ? '_blank' : undefined}
-                        rel={whatsappLink ? 'noreferrer' : undefined}
-                        title={whatsappLink ? 'Abrir WhatsApp' : 'Sem telefone para WhatsApp'}
-                        aria-label={whatsappLink ? 'Abrir WhatsApp' : 'Sem telefone para WhatsApp'}
-                        aria-disabled={!whatsappLink}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-white ${
-                          whatsappLink
-                            ? 'bg-green-600 hover:bg-green-500'
-                            : 'cursor-not-allowed bg-slate-600'
-                        }`}
-                      >
-                        <IconWhatsapp />
-                      </a>
                     )}
 
                     <button
