@@ -16,6 +16,9 @@
 **/yarn-error.log*
 **/*.log
 
+# Local exports
+backend/exports/
+
 # OS / Editor
 .DS_Store
 Thumbs.db

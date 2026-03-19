@@ -110,6 +110,14 @@ Para envio automático via Meta WhatsApp Cloud API, também configure:
 - `META_WHATSAPP_BLOCK_ON_FAILED_CODES` (padrão: `131049,131026,130472`)
 - `META_WHATSAPP_BLOCK_FAILED_LOOKBACK_DAYS` (padrão: `30`)
 
+Para preparar uma campanha de e-mail a partir dos leads com falha no WhatsApp, rode no `backend`:
+
+```powershell
+npm run email:failed-campaign
+```
+
+O script tenta extrair e-mails do site da empresa, salva o melhor e-mail encontrado na tabela `companies` e gera um CSV em `backend/exports/` com colunas prontas para envio (`from_email`, `to_email`, `subject`, `body`).
+
 ### Front-end
 
 No diretório `frontend`, copie `.env.example` para `.env`:

@@ -23,6 +23,16 @@ CREATE INDEX IF NOT EXISTS idx_companies_contacted ON companies(contacted);
 CREATE INDEX IF NOT EXISTS idx_companies_city_category ON companies(city, category);
 CREATE INDEX IF NOT EXISTS idx_companies_priority ON companies(priority_score DESC);
 
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS contact_email TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS contact_email_status VARCHAR(20) NOT NULL DEFAULT 'unknown'
+  CHECK (contact_email_status IN ('unknown', 'found', 'not_found', 'error', 'skipped'));
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS contact_email_source_url TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS contact_email_checked_at TIMESTAMPTZ;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS contact_email_error TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_companies_contact_email ON companies(contact_email);
+CREATE INDEX IF NOT EXISTS idx_companies_contact_email_status ON companies(contact_email_status);
+
 CREATE TABLE IF NOT EXISTS kanban_cards (
   id BIGSERIAL PRIMARY KEY,
   company_id BIGINT NOT NULL UNIQUE REFERENCES companies(id) ON DELETE CASCADE,

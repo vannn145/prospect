@@ -7,6 +7,7 @@
     "start": "node server.js",
     "db:init": "node database/initDb.js",
     "check:google": "node scripts/checkGooglePlaces.js",
+    "email:failed-campaign": "node scripts/prepareFailedLeadEmailCampaign.js",
     "auto:search": "node scripts/autoSearch.js",
     "auto:instagram": "node scripts/enrichInstagram.js",
     "auto:prioritize": "node scripts/prioritizeLeads.js"
