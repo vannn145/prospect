@@ -50,6 +50,7 @@ function EmailPage({
   onOpenDashboard,
   onOpenKanban,
   onOpenWhatsApp,
+  onOpenCrm,
   onLogout,
   authUser,
 }) {
@@ -258,6 +259,13 @@ function EmailPage({
                   className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
                 >
                   WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenCrm}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  CRM
                 </button>
               </div>
               <UserAccountPanel authUser={authUser} onLogout={onLogout} />

@@ -113,6 +113,10 @@ async function fetchCardById(cardId) {
   return result.rows[0] ? mapCard(result.rows[0]) : null;
 }
 
+async function getKanbanCardById(cardId) {
+  return fetchCardById(cardId);
+}
+
 async function getKanbanCards() {
   const result = await query(`
     SELECT
@@ -227,6 +231,7 @@ async function updateKanbanCard(cardId, payload) {
 module.exports = {
   KANBAN_STAGES,
   getKanbanCards,
+  getKanbanCardById,
   addCompanyToKanban,
   updateKanbanCard,
 };

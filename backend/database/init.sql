@@ -78,3 +78,52 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_contact_created_at ON whatsapp_messages(contact_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_status ON whatsapp_messages(status);
+
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS crm_owner TEXT;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS crm_score INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS crm_last_interaction_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_companies_crm_owner ON companies(crm_owner);
+CREATE INDEX IF NOT EXISTS idx_companies_crm_score ON companies(crm_score DESC);
+
+CREATE TABLE IF NOT EXISTS crm_tasks (
+  id BIGSERIAL PRIMARY KEY,
+  company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'in_progress', 'done', 'canceled')),
+  priority VARCHAR(20) NOT NULL DEFAULT 'medium'
+    CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  stage VARCHAR(20)
+    CHECK (stage IN ('entrada', 'contato', 'proposta', 'negociacao', 'fechado', 'perdido')),
+  due_date TIMESTAMPTZ,
+  source VARCHAR(20) NOT NULL DEFAULT 'manual'
+    CHECK (source IN ('manual', 'automation')),
+  assigned_to TEXT,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_company ON crm_tasks(company_id);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_status_due ON crm_tasks(status, due_date);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_stage ON crm_tasks(stage);
+CREATE INDEX IF NOT EXISTS idx_crm_tasks_updated_at ON crm_tasks(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS crm_activities (
+  id BIGSERIAL PRIMARY KEY,
+  company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  card_id BIGINT REFERENCES kanban_cards(id) ON DELETE SET NULL,
+  activity_type VARCHAR(40) NOT NULL,
+  channel VARCHAR(20)
+    CHECK (channel IN ('kanban', 'whatsapp', 'email', 'task', 'system')),
+  title TEXT NOT NULL,
+  details TEXT,
+  metadata JSONB,
+  created_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_crm_activities_company_created_at ON crm_activities(company_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_crm_activities_type ON crm_activities(activity_type);

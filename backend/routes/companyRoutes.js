@@ -15,9 +15,14 @@ const {
 } = require('../services/instagramService');
 const {
   getKanbanCards,
+  getKanbanCardById,
   addCompanyToKanban,
   updateKanbanCard,
 } = require('../services/kanbanService');
+const {
+  runCrmStageAutomations,
+  updateCompanyCrmScore,
+} = require('../services/crmService');
 const {
   getMetaWhatsAppConfig,
   sendMetaWhatsAppMessage,
@@ -720,9 +725,18 @@ router.post('/kanban/cards', async (req, res, next) => {
 
     const card = await addCompanyToKanban({ companyId, stage });
 
+    let scoreSnapshot = null;
+
+    try {
+      scoreSnapshot = await updateCompanyCrmScore(card.company_id);
+    } catch (error) {
+      console.error('Falha ao atualizar score CRM ao criar card:', error);
+    }
+
     return res.json({
       message: 'Empresa incluída no Kanban com sucesso.',
       card,
+      scoreSnapshot,
     });
   } catch (error) {
     return next(error);
@@ -732,6 +746,7 @@ router.post('/kanban/cards', async (req, res, next) => {
 router.patch('/kanban/cards/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const previousCard = await getKanbanCardById(id);
     const card = await updateKanbanCard(id, req.body || {});
 
     if (!card) {
@@ -740,9 +755,28 @@ router.patch('/kanban/cards/:id', async (req, res, next) => {
       });
     }
 
+    let crmAutomation = null;
+
+    try {
+      crmAutomation = await runCrmStageAutomations({
+        previousCard,
+        currentCard: card,
+        actorUsername: req.user?.username || null,
+      });
+    } catch (automationError) {
+      console.error('Falha ao executar automações CRM da etapa:', automationError);
+
+      crmAutomation = {
+        triggered: false,
+        reason: 'automation_error',
+        error: automationError.message,
+      };
+    }
+
     return res.json({
       message: 'Cartão atualizado com sucesso.',
       card,
+      crmAutomation,
     });
   } catch (error) {
     return next(error);

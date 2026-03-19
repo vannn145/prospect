@@ -6,6 +6,7 @@ require('dotenv').config();
 const { initDatabase } = require('./database/initDb');
 const authRoutes = require('./routes/authRoutes');
 const companyRoutes = require('./routes/companyRoutes');
+const crmRoutes = require('./routes/crmRoutes');
 const emailRoutes = require('./routes/emailRoutes');
 const metaWebhookRoutes = require('./routes/metaWebhookRoutes');
 const whatsappInboxRoutes = require('./routes/whatsappInboxRoutes');
@@ -32,6 +33,7 @@ app.use('/auth', authRoutes);
 app.use('/webhooks/meta/whatsapp', metaWebhookRoutes);
 
 app.use('/api/email', requireAuth, emailRoutes);
+app.use('/api/crm', requireAuth, crmRoutes);
 app.use('/api/whatsapp/inbox', requireAuth, whatsappInboxRoutes);
 
 app.use('/api', requireAuth, companyRoutes);

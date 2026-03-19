@@ -154,4 +154,69 @@ export async function fetchEmailInboxMessage(uid) {
   return request(`/email/inbox/messages/${normalizedUid}`);
 }
 
+export async function fetchCrmOverview() {
+  return request('/crm/overview');
+}
+
+export async function fetchCrmPipeline({ stage = '', search = '', limit = 300 } = {}) {
+  const query = new URLSearchParams();
+
+  if (String(stage || '').trim()) {
+    query.set('stage', String(stage).trim());
+  }
+
+  if (String(search || '').trim()) {
+    query.set('search', String(search).trim());
+  }
+
+  query.set('limit', String(Number(limit || 300)));
+
+  return request(`/crm/pipeline?${query.toString()}`);
+}
+
+export async function fetchCrmTasks({ status = '', stage = '', search = '', limit = 200 } = {}) {
+  const query = new URLSearchParams();
+
+  if (String(status || '').trim()) {
+    query.set('status', String(status).trim());
+  }
+
+  if (String(stage || '').trim()) {
+    query.set('stage', String(stage).trim());
+  }
+
+  if (String(search || '').trim()) {
+    query.set('search', String(search).trim());
+  }
+
+  query.set('limit', String(Number(limit || 200)));
+
+  return request(`/crm/tasks?${query.toString()}`);
+}
+
+export async function createCrmTask(payload) {
+  return request('/crm/tasks', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function updateCrmTask(taskId, payload) {
+  return request(`/crm/tasks/${Number(taskId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function fetchCrmCompanyTimeline(companyId, limit = 120) {
+  return request(`/crm/companies/${Number(companyId)}/timeline?limit=${Number(limit || 120)}`);
+}
+
+export async function recalculateCrmScores(payload = {}) {
+  return request('/crm/scores/recalculate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export { API_BASE_URL };

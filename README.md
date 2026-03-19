@@ -22,6 +22,7 @@ Sistema completo para prospecção de empresas que precisam de site ou sistema.
 - Botão "Incluir no Kanban" para transformar uma prospecção em cartão
 - Campos de cartão para anotações, próxima ação, valor de proposta e data de retorno
 - Ações de prospecção via WhatsApp (manual e envio direto pela API da Meta) e marcação de contato
+- Módulo CRM com pipeline, score de lead, timeline unificada e tarefas por empresa
 - Página de E-mail com status de campanha (CSV de envio SMTP) e caixa de entrada IMAP
 - Automação de busca por múltiplas cidades/categorias
 - Priorização de contatos sem site ou com sinais de presença fraca
@@ -121,6 +122,15 @@ Para envio automático via Meta WhatsApp Cloud API, também configure:
 - `META_WHATSAPP_BLOCK_ON_FAILED_ENABLED` (`true`/`false`, padrão: `true`)
 - `META_WHATSAPP_BLOCK_ON_FAILED_CODES` (padrão: `131026,130472`)
 - `META_WHATSAPP_BLOCK_FAILED_LOOKBACK_DAYS` (padrão: `30`)
+
+Para automações do CRM por mudança de etapa no Kanban, configure:
+
+- `CRM_AUTOMATION_SCORE_ENABLED` (padrão `true`; recalcula score automaticamente)
+- `CRM_AUTOMATION_TASK_ENABLED` (padrão `true`; cria tarefa automática por etapa)
+- `CRM_AUTOMATION_WHATSAPP_ENABLED` (padrão `true`; dispara WhatsApp por etapa)
+- `CRM_AUTOMATION_WHATSAPP_MODE` (`template` ou `text`; padrão `template`)
+- `CRM_AUTOMATION_WHATSAPP_TEMPLATE_BY_STAGE` (mapeamento opcional `etapa:template` separado por vírgula)
+- `CRM_AUTOMATION_EMAIL_ENABLED` (padrão `true`; envia e-mail por etapa quando há `contact_email`)
 
 Para preparar uma campanha de e-mail a partir dos leads com falha no WhatsApp, rode no `backend`:
 
@@ -242,6 +252,13 @@ Variáveis de autenticação no `backend/.env`:
 - `GET /whatsapp/inbox/conversations/:waId/messages`
 - `PATCH /whatsapp/inbox/conversations/:waId/read`
 - `POST /whatsapp/inbox/conversations/:waId/reply`
+- `GET /crm/overview`
+- `GET /crm/pipeline`
+- `GET /crm/tasks`
+- `POST /crm/tasks`
+- `PATCH /crm/tasks/:id`
+- `GET /crm/companies/:id/timeline`
+- `POST /crm/scores/recalculate`
 - `GET /email/overview`
 - `GET /email/inbox/messages`
 - `GET /email/inbox/messages/:uid`

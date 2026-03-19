@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import EmailPage from './pages/EmailPage';
 import KanbanPage from './pages/KanbanPage';
 import LoginPage from './pages/LoginPage';
+import CrmPage from './pages/CrmPage';
 import WhatsAppInboxPage from './pages/WhatsAppInboxPage';
 
 function App() {
@@ -101,6 +102,7 @@ function App() {
         onOpenKanban={() => setCurrentPage('kanban')}
         onOpenWhatsApp={() => setCurrentPage('whatsapp')}
         onOpenEmail={() => setCurrentPage('email')}
+        onOpenCrm={() => setCurrentPage('crm')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -113,6 +115,7 @@ function App() {
         onOpenDashboard={() => setCurrentPage('dashboard')}
         onOpenWhatsApp={() => setCurrentPage('whatsapp')}
         onOpenEmail={() => setCurrentPage('email')}
+        onOpenCrm={() => setCurrentPage('crm')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -125,6 +128,20 @@ function App() {
         onOpenDashboard={() => setCurrentPage('dashboard')}
         onOpenKanban={() => setCurrentPage('kanban')}
         onOpenWhatsApp={() => setCurrentPage('whatsapp')}
+        onOpenCrm={() => setCurrentPage('crm')}
+        onLogout={handleLogout}
+        authUser={authUser}
+      />
+    );
+  }
+
+  if (currentPage === 'crm') {
+    return (
+      <CrmPage
+        onOpenDashboard={() => setCurrentPage('dashboard')}
+        onOpenKanban={() => setCurrentPage('kanban')}
+        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
+        onOpenEmail={() => setCurrentPage('email')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -136,6 +153,7 @@ function App() {
       onOpenDashboard={() => setCurrentPage('dashboard')}
       onOpenKanban={() => setCurrentPage('kanban')}
       onOpenEmail={() => setCurrentPage('email')}
+      onOpenCrm={() => setCurrentPage('crm')}
       onLogout={handleLogout}
       authUser={authUser}
     />
