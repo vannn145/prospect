@@ -7,6 +7,7 @@ const {
   createCrmTask,
   updateCrmTask,
   listCrmCompanyTimeline,
+  suggestCrmNextActions,
   recalculateCrmScores,
 } = require('../services/crmService');
 
@@ -117,6 +118,22 @@ router.get('/companies/:id/timeline', async (req, res, next) => {
       companyId: Number(id),
       timeline,
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/companies/:id/next-actions', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { limit = 4 } = req.query;
+
+    const result = await suggestCrmNextActions({
+      companyId: id,
+      limit: Number(limit || 4),
+    });
+
+    return res.json(result);
   } catch (error) {
     return next(error);
   }

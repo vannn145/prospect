@@ -271,6 +271,10 @@ export async function fetchCrmCompanyTimeline(companyId, limit = 120) {
   return request(`/crm/companies/${Number(companyId)}/timeline?limit=${Number(limit || 120)}`);
 }
 
+export async function fetchCrmNextActions(companyId, limit = 4) {
+  return request(`/crm/companies/${Number(companyId)}/next-actions?limit=${Number(limit || 4)}`);
+}
+
 export async function recalculateCrmScores(payload = {}) {
   return request('/crm/scores/recalculate', {
     method: 'POST',

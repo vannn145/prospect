@@ -78,6 +78,33 @@ const DEFAULT_STAGE_EMAIL_BODY = {
   fechado: 'Olá, equipe {{company_name}}.\n\nNegócio fechado com sucesso ✅\n\nVamos iniciar o onboarding e próximos passos de execução.\n',
 };
 
+const STAGE_NEXT_ACTION_HINTS = {
+  entrada: {
+    title: 'Fazer primeiro contato com o lead',
+    reason: 'Lead ainda em entrada e sem avanço de relacionamento.',
+  },
+  contato: {
+    title: 'Executar follow-up de qualificação',
+    reason: 'Etapa de contato pede validação de interesse e dor principal.',
+  },
+  proposta: {
+    title: 'Cobrar retorno da proposta enviada',
+    reason: 'Manter cadência aumenta taxa de resposta na etapa de proposta.',
+  },
+  negociacao: {
+    title: 'Conduzir fechamento com deadline claro',
+    reason: 'Negociação ativa precisa de próximo passo objetivo para fechamento.',
+  },
+  fechado: {
+    title: 'Iniciar onboarding comercial',
+    reason: 'Conta fechada deve migrar para execução sem atraso.',
+  },
+  perdido: {
+    title: 'Tentar reativação com nova abordagem',
+    reason: 'Lead perdido pode voltar com oferta ou timing diferente.',
+  },
+};
+
 let cachedTransporter = null;
 let cachedTransportSignature = '';
 
@@ -1205,6 +1232,198 @@ async function listCrmCompanyTimeline({ companyId, limit = 120 } = {}) {
   return result.rows;
 }
 
+function inferPreferredChannel(company) {
+  if (sanitizeText(company?.phone)) {
+    return 'whatsapp';
+  }
+
+  if (sanitizeText(company?.contact_email)) {
+    return 'email';
+  }
+
+  return 'task';
+}
+
+function normalizeIsoDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
+}
+
+async function suggestCrmNextActions({ companyId, limit = 4 } = {}) {
+  const normalizedCompanyId = Number(companyId);
+
+  if (!normalizedCompanyId) {
+    throw new Error('companyId inválido para sugestões de próximas ações.');
+  }
+
+  const safeLimit = clamp(parseInteger(limit, 4), 1, 10);
+  const company = await getCompanyById(normalizedCompanyId);
+
+  if (!company) {
+    throw new Error('Empresa não encontrada para sugerir próximas ações.');
+  }
+
+  const [engagement, taskMetrics, timeline, openTasksResult] = await Promise.all([
+    getCompanyEngagement(normalizedCompanyId),
+    getCompanyTaskMetrics(normalizedCompanyId),
+    listCrmCompanyTimeline({ companyId: normalizedCompanyId, limit: 30 }),
+    query(
+      `
+        SELECT
+          id,
+          title,
+          priority,
+          due_date,
+          status,
+          stage
+        FROM crm_tasks
+        WHERE company_id = $1
+          AND status IN ('pending', 'in_progress')
+        ORDER BY COALESCE(due_date, created_at) ASC
+        LIMIT 6
+      `,
+      [normalizedCompanyId]
+    ),
+  ]);
+
+  const now = Date.now();
+  const stage = String(company.kanban_stage || 'entrada');
+  const stageHint = STAGE_NEXT_ACTION_HINTS[stage] || STAGE_NEXT_ACTION_HINTS.entrada;
+  const preferredChannel = inferPreferredChannel(company);
+  const openTasks = Array.isArray(openTasksResult?.rows) ? openTasksResult.rows : [];
+  const overdueTasks = openTasks.filter((task) => {
+    if (!task?.due_date) {
+      return false;
+    }
+
+    const dueAt = new Date(task.due_date).getTime();
+    return Number.isFinite(dueAt) && dueAt < now;
+  });
+
+  const activityCandidates = [
+    company.crm_last_interaction_at,
+    engagement.last_message_at,
+    taskMetrics.last_task_at,
+    timeline[0]?.created_at,
+  ]
+    .map((value) => (value ? new Date(value).getTime() : NaN))
+    .filter((value) => Number.isFinite(value));
+
+  const lastActivityAt = activityCandidates.length ? Math.max(...activityCandidates) : null;
+  const hoursWithoutActivity = lastActivityAt == null
+    ? 999
+    : Math.max(0, Math.floor((now - lastActivityAt) / (1000 * 60 * 60)));
+
+  const suggestions = [
+    {
+      key: 'stage_follow_up',
+      title: stageHint.title,
+      reason: stageHint.reason,
+      priority: stage === 'negociacao' ? 'urgent' : 'high',
+      channel: preferredChannel,
+      due_date: normalizeIsoDate(addDaysToNow(stage === 'negociacao' ? 0 : 1)),
+      suggested_message: preferredChannel === 'email'
+        ? getStageEmailBody(stage, company)
+        : getStageWhatsAppText(stage, company),
+    },
+  ];
+
+  if (hoursWithoutActivity >= 24) {
+    suggestions.push({
+      key: 'stale_lead_reactivation',
+      title: `Reativar contato após ${hoursWithoutActivity}h sem atividade`,
+      reason: 'Lead sem interação recente tende a esfriar rapidamente.',
+      priority: hoursWithoutActivity >= 72 ? 'urgent' : 'high',
+      channel: preferredChannel,
+      due_date: normalizeIsoDate(addDaysToNow(0)),
+      suggested_message: preferredChannel === 'email'
+        ? `Olá, equipe ${company.name}.\n\nPassando para alinhar o próximo passo do atendimento. Podemos retomar ainda hoje?`
+        : `Olá, ${company.name}! Passando para alinharmos o próximo passo da sua demanda. Podemos retomar hoje?`,
+    });
+  }
+
+  if (overdueTasks.length > 0) {
+    suggestions.push({
+      key: 'overdue_tasks',
+      title: `Regularizar ${overdueTasks.length} tarefa(s) vencida(s)`,
+      reason: 'Tarefas vencidas impactam avanço no pipeline e previsibilidade.',
+      priority: 'urgent',
+      channel: 'task',
+      due_date: normalizeIsoDate(addDaysToNow(0)),
+      suggested_message: overdueTasks
+        .slice(0, 3)
+        .map((task) => `- ${task.title}`)
+        .join('\n'),
+    });
+  }
+
+  if (Number(engagement.inbound_count || 0) === 0 && Number(engagement.outbound_success_count || 0) >= 2) {
+    suggestions.push({
+      key: 'channel_switch',
+      title: 'Trocar abordagem de contato (novo gancho)',
+      reason: 'Houve tentativas outbound sem resposta inbound; variar ângulo tende a destravar.',
+      priority: 'medium',
+      channel: preferredChannel,
+      due_date: normalizeIsoDate(addDaysToNow(1)),
+      suggested_message: preferredChannel === 'email'
+        ? `Olá, equipe ${company.name}.\n\nTenho uma recomendação rápida e prática para aumentar os resultados digitais de vocês. Posso compartilhar em 3 pontos?`
+        : `Olá, ${company.name}! Tenho uma ideia rápida em 3 pontos para melhorar seus resultados digitais. Quer que eu te envie agora?`,
+    });
+  }
+
+  if (Number(taskMetrics.open_tasks || 0) === 0) {
+    suggestions.push({
+      key: 'create_task',
+      title: 'Criar tarefa de próximo passo no CRM',
+      reason: 'Sem tarefa aberta, o lead pode ficar sem dono e sem cadência.',
+      priority: 'high',
+      channel: 'task',
+      due_date: normalizeIsoDate(addDaysToNow(1)),
+      suggested_message: `Definir responsável, canal e horário do próximo contato com ${company.name}.`,
+    });
+  }
+
+  const uniqueByKey = new Map();
+
+  for (const suggestion of suggestions) {
+    if (!uniqueByKey.has(suggestion.key)) {
+      uniqueByKey.set(suggestion.key, suggestion);
+    }
+  }
+
+  return {
+    company: {
+      id: company.id,
+      name: company.name,
+      city: company.city,
+      category: company.category,
+      stage,
+      crm_score: Number(company.crm_score || 0),
+    },
+    context: {
+      preferred_channel: preferredChannel,
+      hours_without_activity: hoursWithoutActivity,
+      inbound_count: Number(engagement.inbound_count || 0),
+      outbound_success_count: Number(engagement.outbound_success_count || 0),
+      open_tasks: Number(taskMetrics.open_tasks || 0),
+      overdue_tasks: overdueTasks.length,
+      timeline_events: timeline.length,
+    },
+    suggestions: Array.from(uniqueByKey.values()).slice(0, safeLimit),
+    generated_at: new Date().toISOString(),
+    engine: 'crm-heuristic-ai-v1',
+  };
+}
+
 async function hasOpenAutomationTaskForStage({ companyId, stage, title }) {
   const result = await query(
     `
@@ -1590,6 +1809,7 @@ module.exports = {
   createCrmTask,
   updateCrmTask,
   listCrmCompanyTimeline,
+  suggestCrmNextActions,
   recalculateCrmScores,
   runCrmStageAutomations,
   updateCompanyCrmScore,
