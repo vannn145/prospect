@@ -37,12 +37,80 @@ function ThemeToggleButton({ theme, onToggle }) {
 function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onToggleTheme, onLogout }) {
   const isDark = theme === 'dark';
 
+  function Icon({ type, className = 'h-5 w-5' }) {
+    if (type === 'dashboard') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M3 10.5 12 3l9 7.5" />
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M5.25 9.75V21h13.5V9.75" />
+        </svg>
+      );
+    }
+
+    if (type === 'kanban') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <rect x="3" y="4" width="18" height="16" rx="2" strokeWidth="1.8" />
+          <path strokeWidth="1.8" strokeLinecap="round" d="M9 4v16M15 4v16" />
+        </svg>
+      );
+    }
+
+    if (type === 'whatsapp') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M20 11.5A8.5 8.5 0 0 1 7.5 19L4 20l1-3.2A8.5 8.5 0 1 1 20 11.5Z" />
+          <path strokeWidth="1.8" strokeLinecap="round" d="M9.5 10.2c.3 1.5 2.2 3.3 3.8 3.7" />
+        </svg>
+      );
+    }
+
+    if (type === 'email') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <rect x="3" y="5" width="18" height="14" rx="2" strokeWidth="1.8" />
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="m4 7 8 6 8-6" />
+        </svg>
+      );
+    }
+
+    if (type === 'analytics') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4 19h16" />
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M7 15v-4m5 4V7m5 8v-6" />
+        </svg>
+      );
+    }
+
+    if (type === 'search') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <circle cx="11" cy="11" r="6" strokeWidth="1.8" />
+          <path strokeWidth="1.8" strokeLinecap="round" d="m20 20-4.2-4.2" />
+        </svg>
+      );
+    }
+
+    if (type === 'logout') {
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M10 17l-5-5 5-5" />
+          <path strokeWidth="1.8" strokeLinecap="round" d="M5 12h11" />
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M14 4h5v16h-5" />
+        </svg>
+      );
+    }
+
+    return null;
+  }
+
   const items = [
-    { key: 'dashboard', label: 'Dashboard', icon: '⌂' },
-    { key: 'kanban', label: 'Kanban', icon: '▦' },
-    { key: 'whatsapp', label: 'WhatsApp', icon: '◔' },
-    { key: 'email', label: 'Email', icon: '✉' },
-    { key: 'crm', label: 'Analytics', icon: '◷' },
+    { key: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { key: 'kanban', label: 'Kanban', icon: 'kanban' },
+    { key: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp' },
+    { key: 'email', label: 'Email', icon: 'email' },
+    { key: 'crm', label: 'Analytics', icon: 'analytics' },
   ];
 
   return (
@@ -56,7 +124,7 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
       }`}
     >
       <div className="relative flex items-center gap-3 px-1 py-2">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 text-sm font-bold text-white">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500 text-sm font-bold text-white">
           KL
         </span>
         {isOpen && (
@@ -88,7 +156,7 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
             : 'border-slate-200 bg-slate-100 text-slate-500'
         }`}
       >
-        <span className="text-base">⌕</span>
+        <Icon type="search" className="h-4 w-4" />
         {isOpen && <span className="text-sm">Search...</span>}
       </button>
 
@@ -103,14 +171,14 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
               onClick={() => onNavigate(item.key)}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
                 active
-                  ? 'bg-indigo-500 text-white'
+                  ? 'bg-teal-500 text-white'
                   : isDark
                   ? 'bg-transparent text-slate-300 hover:bg-slate-800'
                   : 'bg-transparent text-slate-700 hover:bg-slate-100'
               }`}
               title={item.label}
             >
-              <span className="text-base">{item.icon}</span>
+              <Icon type={item.icon} className="h-5 w-5" />
               {isOpen && <span>{item.label}</span>}
             </button>
           );
@@ -127,7 +195,7 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
               : 'text-slate-700 hover:bg-slate-100'
           }`}
         >
-          <span className="text-base">↪</span>
+          <Icon type="logout" className="h-5 w-5" />
           {isOpen && <span>Logout</span>}
         </button>
 
@@ -141,10 +209,12 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
           }`}
         >
           <span className="flex items-center gap-2">
-            <span>{isDark ? '☀' : '☾'}</span>
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-xs">
+              {isDark ? '☀' : '☾'}
+            </span>
             {isOpen && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
           </span>
-          <span className={`relative inline-flex h-5 w-10 items-center rounded-full ${isDark ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+          <span className={`relative inline-flex h-5 w-10 items-center rounded-full ${isDark ? 'bg-teal-500' : 'bg-slate-300'}`}>
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isDark ? 'translate-x-5' : 'translate-x-1'}`} />
           </span>
         </button>
