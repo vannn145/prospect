@@ -749,8 +749,8 @@ async function updateConversationTag({ waId, tag }) {
   const result = await query(
     `
       UPDATE whatsapp_contacts
-      SET contact_tag = $2,
-          contact_tag_updated_at = CASE WHEN $2 IS NULL THEN NULL ELSE NOW() END,
+      SET contact_tag = $2::text,
+          contact_tag_updated_at = CASE WHEN $2::text IS NULL THEN NULL ELSE NOW() END,
           updated_at = NOW()
       WHERE wa_id = $1
       RETURNING id
