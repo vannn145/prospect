@@ -92,6 +92,8 @@ async function getCompanies({ status } = {}) {
 
 async function getCompaniesPaginated({
   status,
+  city,
+  category,
   contacted,
   page = 1,
   perPage = 25,
@@ -102,6 +104,16 @@ async function getCompaniesPaginated({
   if (status) {
     params.push(status);
     filters.push(`status_site = $${params.length}`);
+  }
+
+  if (city) {
+    params.push(`%${String(city).trim()}%`);
+    filters.push(`city ILIKE $${params.length}`);
+  }
+
+  if (category) {
+    params.push(String(category).trim());
+    filters.push(`category = $${params.length}`);
   }
 
   if (typeof contacted === 'boolean') {

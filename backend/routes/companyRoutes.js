@@ -463,9 +463,11 @@ router.post('/search', async (req, res, next) => {
 
 router.get('/companies', async (req, res, next) => {
   try {
-    const { status, page, perPage, includeContacted } = req.query;
+    const { status, city, category, page, perPage, includeContacted } = req.query;
     const companies = await getCompaniesPaginated({
       status,
+      city,
+      category,
       page,
       perPage,
       contacted: parseBoolean(includeContacted, true) ? undefined : false,

@@ -50,6 +50,8 @@ export async function fetchStats() {
 
 export async function fetchCompanies({
   status = 'todos',
+  city = '',
+  category = '',
   page = 1,
   perPage = 25,
   includeContacted = false,
@@ -58,6 +60,14 @@ export async function fetchCompanies({
 
   if (status && status !== 'todos') {
     query.set('status', String(status));
+  }
+
+  if (String(city || '').trim()) {
+    query.set('city', String(city).trim());
+  }
+
+  if (String(category || '').trim()) {
+    query.set('category', String(category).trim());
   }
 
   query.set('page', String(Number(page) || 1));

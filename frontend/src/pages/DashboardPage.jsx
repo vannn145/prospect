@@ -65,6 +65,7 @@ function DashboardPage() {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [companies, setCompanies] = useState([]);
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [searchScope, setSearchScope] = useState({ city: '', category: '' });
   const [companiesPage, setCompaniesPage] = useState(1);
   const [companiesPerPage, setCompaniesPerPage] = useState(25);
   const [gotoPageInput, setGotoPageInput] = useState('1');
@@ -111,9 +112,13 @@ function DashboardPage() {
       const requestedStatus = status || statusFilter;
       const requestedPage = Number(page || companiesPage);
       const requestedPerPage = Number(perPage || companiesPerPage);
+      const requestedCity = String(searchScope.city || '').trim();
+      const requestedCategory = String(searchScope.category || '').trim();
 
       const response = await fetchCompanies({
         status: requestedStatus,
+        city: requestedCity,
+        category: requestedCategory,
         page: requestedPage,
         perPage: requestedPerPage,
         includeContacted: false,
@@ -138,7 +143,7 @@ function DashboardPage() {
     } finally {
       setLoadingCompanies(false);
     }
-  }, [statusFilter, companiesPage, companiesPerPage]);
+  }, [statusFilter, companiesPage, companiesPerPage, searchScope.city, searchScope.category]);
 
   const loadMetaConfig = useCallback(async () => {
     try {
@@ -183,6 +188,10 @@ function DashboardPage() {
         ...payload,
         includeInstagram: true,
         maxPages: 2,
+      });
+      setSearchScope({
+        city: payload.city || '',
+        category: payload.category || '',
       });
       setSuccessMessage(`Busca concluída: ${result.saved} empresas salvas.`);
       setCompaniesPage(1);
