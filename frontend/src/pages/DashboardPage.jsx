@@ -390,9 +390,9 @@ function DashboardPage() {
   return (
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6">
-        <header className="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm">
+        <header className="rounded-xl border border-slate-700 bg-slate-800 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-start">
-            <img src="/logo-keula-mark.svg" alt="Keula" className="h-14 w-14" />
+            <img src="/logo-keula-clean.svg" alt="Keula" className="h-10 w-auto" />
           </div>
         </header>
 
