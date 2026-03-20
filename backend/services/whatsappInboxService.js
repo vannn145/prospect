@@ -726,8 +726,7 @@ async function markConversationAsRead({ waId }) {
   const result = await query(
     `
       UPDATE whatsapp_contacts
-      SET unread_count = 0,
-          updated_at = NOW()
+      SET unread_count = 0
       WHERE wa_id = $1
       RETURNING id
     `,
