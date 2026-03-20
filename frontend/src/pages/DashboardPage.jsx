@@ -188,7 +188,7 @@ function DashboardPage() {
     try {
       const result = await searchCompanies({
         ...payload,
-        includeInstagram: true,
+        includeInstagram: false,
         maxPages: 2,
       });
       setSearchScope({

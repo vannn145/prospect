@@ -208,7 +208,7 @@ async function geocodeCity(city) {
 async function fetchNearbyPage(params) {
   const response = await axios.get(NEARBY_SEARCH_URL, {
     params,
-    timeout: 15000,
+    timeout: Number(process.env.GOOGLE_NEARBY_TIMEOUT_MS || 10000),
   });
 
   return response.data;
@@ -274,7 +274,7 @@ async function fetchPlaceDetails(placeId) {
         'name,formatted_phone_number,formatted_address,website,rating,user_ratings_total,geometry,place_id',
       key: apiKey,
     },
-    timeout: 15000,
+    timeout: Number(process.env.GOOGLE_PLACE_DETAILS_TIMEOUT_MS || 8000),
   });
 
   if (response.data.status !== 'OK' || !response.data.result) {

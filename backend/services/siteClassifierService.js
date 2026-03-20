@@ -37,8 +37,8 @@ async function classifyWebsite(website) {
     };
   }
 
-  const timeoutMs = Number(process.env.SITE_TIMEOUT_MS || 7000);
-  const slowThresholdMs = Number(process.env.SITE_SLOW_THRESHOLD_MS || 4000);
+  const timeoutMs = Number(process.env.SITE_TIMEOUT_MS || 3500);
+  const slowThresholdMs = Number(process.env.SITE_SLOW_THRESHOLD_MS || 2500);
 
   const reasons = [];
   if (!normalizedWebsite.toLowerCase().startsWith('https://')) {
