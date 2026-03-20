@@ -15,7 +15,6 @@ import {
 import LeadsTable from '../components/LeadsTable';
 import SearchForm from '../components/SearchForm';
 import StatCard from '../components/StatCard';
-import UserAccountPanel from '../components/UserAccountPanel';
 
 const DEFAULT_WHATSAPP_MESSAGE = `Olá, tudo bem?
 
@@ -55,7 +54,7 @@ async function copyText(text) {
   document.body.removeChild(textarea);
 }
 
-function DashboardPage({ onLogout, authUser }) {
+function DashboardPage() {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [companies, setCompanies] = useState([]);
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -303,9 +302,7 @@ function DashboardPage({ onLogout, authUser }) {
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[340px]">
-              <UserAccountPanel authUser={authUser} onLogout={onLogout} />
-            </div>
+            <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[340px]" />
           </div>
         </header>
 

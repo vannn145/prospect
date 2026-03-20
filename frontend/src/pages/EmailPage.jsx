@@ -7,7 +7,6 @@ import {
   sendEmailFromPanel,
 } from '../api/client';
 import StatCard from '../components/StatCard';
-import UserAccountPanel from '../components/UserAccountPanel';
 
 function formatDateTime(value) {
   if (!value) {
@@ -47,10 +46,7 @@ function getStatusTagClass(status) {
   return 'bg-slate-500/20 text-slate-300';
 }
 
-function EmailPage({
-  onLogout,
-  authUser,
-}) {
+function EmailPage() {
   const [overview, setOverview] = useState({
     config: null,
     inbox: null,
@@ -270,7 +266,6 @@ function EmailPage({
                   Atualizar inbox
                 </button>
               </div>
-              <UserAccountPanel authUser={authUser} onLogout={onLogout} />
             </div>
           </div>
         </header>

@@ -8,6 +8,7 @@ import KanbanPage from './pages/KanbanPage';
 import LoginPage from './pages/LoginPage';
 import CrmPage from './pages/CrmPage';
 import WhatsAppInboxPage from './pages/WhatsAppInboxPage';
+import UserAccountPanel from './components/UserAccountPanel';
 
 const THEME_STORAGE_KEY = 'prospect-theme';
 
@@ -34,7 +35,7 @@ function ThemeToggleButton({ theme, onToggle }) {
   );
 }
 
-function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onToggleTheme, onLogout }) {
+function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onToggleTheme, onLogout, authUser }) {
   const isDark = theme === 'dark';
 
   function Icon({ type, className = 'h-5 w-5' }) {
@@ -88,16 +89,6 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
           <circle cx="11" cy="11" r="6" strokeWidth="1.8" />
           <path strokeWidth="1.8" strokeLinecap="round" d="m20 20-4.2-4.2" />
-        </svg>
-      );
-    }
-
-    if (type === 'logout') {
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M10 17l-5-5 5-5" />
-          <path strokeWidth="1.8" strokeLinecap="round" d="M5 12h11" />
-          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M14 4h5v16h-5" />
         </svg>
       );
     }
@@ -186,18 +177,14 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
       </nav>
 
       <div className={`mt-auto space-y-2 border-t pt-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        <button
-          type="button"
-          onClick={onLogout}
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-            isDark
-              ? 'text-slate-200 hover:bg-slate-800'
-              : 'text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          <Icon type="logout" className="h-5 w-5" />
-          {isOpen && <span>Logout</span>}
-        </button>
+        {isOpen && (
+          <UserAccountPanel
+            authUser={authUser}
+            onLogout={onLogout}
+            compact
+            className="border-slate-600 bg-slate-800/70 p-3"
+          />
+        )}
 
         <button
           type="button"
@@ -265,6 +252,7 @@ function App() {
           theme={theme}
           onToggleTheme={handleToggleTheme}
           onLogout={handleLogout}
+          authUser={authUser}
         />
         <div className={`transition-all duration-300 ${isSidebarOpen ? 'lg:pl-72' : 'lg:pl-28'}`}>
           {content}
@@ -354,47 +342,22 @@ function App() {
   }
 
   if (currentPage === 'dashboard') {
-    return withAuthenticatedChrome(
-      <DashboardPage
-        onLogout={handleLogout}
-        authUser={authUser}
-      />
-    );
+    return withAuthenticatedChrome(<DashboardPage />);
   }
 
   if (currentPage === 'kanban') {
-    return withAuthenticatedChrome(
-      <KanbanPage
-        onLogout={handleLogout}
-        authUser={authUser}
-      />
-    );
+    return withAuthenticatedChrome(<KanbanPage />);
   }
 
   if (currentPage === 'email') {
-    return withAuthenticatedChrome(
-      <EmailPage
-        onLogout={handleLogout}
-        authUser={authUser}
-      />
-    );
+    return withAuthenticatedChrome(<EmailPage />);
   }
 
   if (currentPage === 'crm') {
-    return withAuthenticatedChrome(
-      <CrmPage
-        onLogout={handleLogout}
-        authUser={authUser}
-      />
-    );
+    return withAuthenticatedChrome(<CrmPage />);
   }
 
-  return withAuthenticatedChrome(
-    <WhatsAppInboxPage
-      onLogout={handleLogout}
-      authUser={authUser}
-    />
-  );
+  return withAuthenticatedChrome(<WhatsAppInboxPage />);
 }
 
 export default App;

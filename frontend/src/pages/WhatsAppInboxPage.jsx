@@ -6,7 +6,6 @@ import {
   markInboxConversationRead,
   sendInboxReply,
 } from '../api/client';
-import UserAccountPanel from '../components/UserAccountPanel';
 
 function formatConversationTime(value) {
   if (!value) {
@@ -83,10 +82,7 @@ function getLatestInboundMessage(list) {
   return null;
 }
 
-function WhatsAppInboxPage({
-  onLogout,
-  authUser,
-}) {
+function WhatsAppInboxPage() {
   const [conversations, setConversations] = useState([]);
   const [selectedWaId, setSelectedWaId] = useState('');
   const [messages, setMessages] = useState([]);
@@ -416,7 +412,6 @@ function WhatsAppInboxPage({
                   Atualizar inbox
                 </button>
               </div>
-              <UserAccountPanel authUser={authUser} onLogout={onLogout} />
             </div>
           </div>
         </header>

@@ -25,7 +25,7 @@ function formatDisplayName(username) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function UserAccountPanel({ authUser, onLogout }) {
+function UserAccountPanel({ authUser, onLogout, compact = false, className = '' }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -76,10 +76,10 @@ function UserAccountPanel({ authUser, onLogout }) {
   }
 
   return (
-    <div className="w-full rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm lg:w-[340px]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className={`w-full rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm ${className}`}>
+      <div className={`flex gap-3 ${compact ? 'items-center justify-between' : 'flex-col sm:flex-row sm:items-center sm:justify-between'}`}>
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-teal-500/15 text-teal-300">
+          <span className={`inline-flex items-center justify-center rounded-full bg-teal-500/15 text-teal-300 ${compact ? 'h-9 w-9' : 'h-11 w-11'}`}>
             <IconUser />
           </span>
           <div>
@@ -88,7 +88,7 @@ function UserAccountPanel({ authUser, onLogout }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className={`flex flex-wrap gap-2 ${compact ? 'justify-end' : ''}`}>
           <button
             type="button"
             onClick={() => {

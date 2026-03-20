@@ -10,7 +10,6 @@ import {
   updateCrmTask,
 } from '../api/client';
 import StatCard from '../components/StatCard';
-import UserAccountPanel from '../components/UserAccountPanel';
 
 const STAGE_OPTIONS = [
   { value: '', label: 'Todas etapas' },
@@ -127,10 +126,7 @@ function getChannelLabel(channel) {
   return 'Sistema';
 }
 
-function CrmPage({
-  onLogout,
-  authUser,
-}) {
+function CrmPage() {
   const [overview, setOverview] = useState(null);
   const [pipelineItems, setPipelineItems] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -407,7 +403,6 @@ function CrmPage({
                   {recalculatingScores ? 'Recalculando...' : 'Recalcular score'}
                 </button>
               </div>
-              <UserAccountPanel authUser={authUser} onLogout={onLogout} />
             </div>
           </div>
         </header>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchKanbanCards, updateKanbanCard } from '../api/client';
-import UserAccountPanel from '../components/UserAccountPanel';
 import { getCategoryLabel, getStatusSiteLabel } from '../utils/labels';
 
 const KANBAN_COLUMNS = [
@@ -33,7 +32,7 @@ function normalizePayload(draft) {
   };
 }
 
-function KanbanPage({ onLogout, authUser }) {
+function KanbanPage() {
   const [cards, setCards] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -142,7 +141,6 @@ function KanbanPage({ onLogout, authUser }) {
                   Atualizar quadro
                 </button>
               </div>
-              <UserAccountPanel authUser={authUser} onLogout={onLogout} />
             </div>
           </div>
         </header>
