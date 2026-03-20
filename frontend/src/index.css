@@ -62,3 +62,9 @@ html[data-theme='light'] .bg-emerald-950,
 html[data-theme='light'] .bg-green-950 {
   background-color: #fff !important;
 }
+
+html[data-theme='light'] img[src='/logo-keula.svg'] {
+  background-color: #0f172a;
+  border-radius: 0.75rem;
+  padding: 0.45rem 0.65rem;
+}

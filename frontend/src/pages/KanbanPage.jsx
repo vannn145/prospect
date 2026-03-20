@@ -33,7 +33,7 @@ function normalizePayload(draft) {
   };
 }
 
-function KanbanPage({ onOpenDashboard, onOpenWhatsApp, onOpenEmail, onOpenCrm, onLogout, authUser }) {
+function KanbanPage({ onLogout, authUser }) {
   const [cards, setCards] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -140,34 +140,6 @@ function KanbanPage({ onOpenDashboard, onOpenWhatsApp, onOpenEmail, onOpenCrm, o
                   className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
                 >
                   Atualizar quadro
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenDashboard}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  Voltar ao painel
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenWhatsApp}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  WhatsApp
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenEmail}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  Email
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenCrm}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  CRM
                 </button>
               </div>
               <UserAccountPanel authUser={authUser} onLogout={onLogout} />

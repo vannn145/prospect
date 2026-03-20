@@ -55,7 +55,7 @@ async function copyText(text) {
   document.body.removeChild(textarea);
 }
 
-function DashboardPage({ onOpenKanban, onOpenWhatsApp, onOpenEmail, onOpenCrm, onLogout, authUser }) {
+function DashboardPage({ onLogout, authUser }) {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [companies, setCompanies] = useState([]);
   const [statusFilter, setStatusFilter] = useState('todos');
@@ -304,36 +304,6 @@ function DashboardPage({ onOpenKanban, onOpenWhatsApp, onOpenEmail, onOpenCrm, o
             </div>
 
             <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[340px]">
-              <div className="flex flex-wrap gap-2 xl:justify-end">
-                <button
-                  type="button"
-                  onClick={onOpenKanban}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  Abrir Kanban
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenWhatsApp}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  Abrir WhatsApp
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenEmail}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  Abrir Email
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenCrm}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
-                >
-                  Abrir CRM
-                </button>
-              </div>
               <UserAccountPanel authUser={authUser} onLogout={onLogout} />
             </div>
           </div>

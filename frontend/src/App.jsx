@@ -34,6 +34,58 @@ function ThemeToggleButton({ theme, onToggle }) {
   );
 }
 
+function SideNavigation({ currentPage, onNavigate }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const items = [
+    { key: 'dashboard', label: 'Painel', icon: '🏠' },
+    { key: 'kanban', label: 'Kanban', icon: '🗂️' },
+    { key: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+    { key: 'email', label: 'Email', icon: '✉️' },
+    { key: 'crm', label: 'CRM', icon: '📈' },
+  ];
+
+  return (
+    <aside
+      className={`fixed left-4 top-20 z-50 rounded-2xl border border-slate-500 bg-white/95 p-2 shadow-md backdrop-blur transition-all ${
+        isOpen ? 'w-52' : 'w-14'
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="mb-2 flex h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-lg hover:bg-slate-200"
+        aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+      >
+        ☰
+      </button>
+
+      <nav className="space-y-1">
+        {items.map((item) => {
+          const active = item.key === currentPage;
+
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onNavigate(item.key)}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                active
+                  ? 'bg-teal-500 text-white'
+                  : 'bg-transparent text-slate-700 hover:bg-slate-100'
+              }`}
+              title={item.label}
+            >
+              <span className="text-base">{item.icon}</span>
+              {isOpen && <span>{item.label}</span>}
+            </button>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [authStatus, setAuthStatus] = useState('checking');
@@ -59,6 +111,15 @@ function App() {
     return (
       <>
         <ThemeToggleButton theme={theme} onToggle={handleToggleTheme} />
+        {content}
+      </>
+    );
+  }
+
+  function withAuthenticatedChrome(content) {
+    return withThemeToggle(
+      <>
+        <SideNavigation currentPage={currentPage} onNavigate={setCurrentPage} />
         {content}
       </>
     );
@@ -145,12 +206,8 @@ function App() {
   }
 
   if (currentPage === 'dashboard') {
-    return withThemeToggle(
+    return withAuthenticatedChrome(
       <DashboardPage
-        onOpenKanban={() => setCurrentPage('kanban')}
-        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
-        onOpenEmail={() => setCurrentPage('email')}
-        onOpenCrm={() => setCurrentPage('crm')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -158,12 +215,8 @@ function App() {
   }
 
   if (currentPage === 'kanban') {
-    return withThemeToggle(
+    return withAuthenticatedChrome(
       <KanbanPage
-        onOpenDashboard={() => setCurrentPage('dashboard')}
-        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
-        onOpenEmail={() => setCurrentPage('email')}
-        onOpenCrm={() => setCurrentPage('crm')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -171,12 +224,8 @@ function App() {
   }
 
   if (currentPage === 'email') {
-    return withThemeToggle(
+    return withAuthenticatedChrome(
       <EmailPage
-        onOpenDashboard={() => setCurrentPage('dashboard')}
-        onOpenKanban={() => setCurrentPage('kanban')}
-        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
-        onOpenCrm={() => setCurrentPage('crm')}
         onLogout={handleLogout}
         authUser={authUser}
       />
@@ -184,24 +233,16 @@ function App() {
   }
 
   if (currentPage === 'crm') {
-    return withThemeToggle(
+    return withAuthenticatedChrome(
       <CrmPage
-        onOpenDashboard={() => setCurrentPage('dashboard')}
-        onOpenKanban={() => setCurrentPage('kanban')}
-        onOpenWhatsApp={() => setCurrentPage('whatsapp')}
-        onOpenEmail={() => setCurrentPage('email')}
         onLogout={handleLogout}
         authUser={authUser}
       />
     );
   }
 
-  return withThemeToggle(
+  return withAuthenticatedChrome(
     <WhatsAppInboxPage
-      onOpenDashboard={() => setCurrentPage('dashboard')}
-      onOpenKanban={() => setCurrentPage('kanban')}
-      onOpenEmail={() => setCurrentPage('email')}
-      onOpenCrm={() => setCurrentPage('crm')}
       onLogout={handleLogout}
       authUser={authUser}
     />
