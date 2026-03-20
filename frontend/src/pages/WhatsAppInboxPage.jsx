@@ -93,6 +93,8 @@ function WhatsAppInboxPage() {
 
   const [searchInput, setSearchInput] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
+  const [conversationFilter, setConversationFilter] = useState('all');
+  const [conversationSort, setConversationSort] = useState('unread_first');
   const [replyText, setReplyText] = useState('');
 
   const [errorMessage, setErrorMessage] = useState('');
@@ -170,6 +172,63 @@ function WhatsAppInboxPage() {
     () => conversations.find((conversation) => conversation.wa_id === selectedWaId) || null,
     [conversations, selectedWaId]
   );
+
+  const organizedConversations = useMemo(() => {
+    const list = [...conversations];
+
+    const filtered = list.filter((conversation) => {
+      if (conversationFilter === 'unread') {
+        return Number(conversation.unread_count || 0) > 0;
+      }
+
+      if (conversationFilter === 'with_company') {
+        return Boolean(conversation.company?.id);
+      }
+
+      if (conversationFilter === 'without_company') {
+        return !conversation.company?.id;
+      }
+
+      return true;
+    });
+
+    filtered.sort((left, right) => {
+      const leftUnread = Number(left.unread_count || 0);
+      const rightUnread = Number(right.unread_count || 0);
+
+      if (conversationSort === 'unread_first' && leftUnread !== rightUnread) {
+        return rightUnread - leftUnread;
+      }
+
+      const leftTime = left.last_message_at ? new Date(left.last_message_at).getTime() : 0;
+      const rightTime = right.last_message_at ? new Date(right.last_message_at).getTime() : 0;
+
+      return rightTime - leftTime;
+    });
+
+    return filtered;
+  }, [conversations, conversationFilter, conversationSort]);
+
+  const conversationCounters = useMemo(() => {
+    return conversations.reduce(
+      (acc, conversation) => {
+        acc.total += 1;
+
+        if (Number(conversation.unread_count || 0) > 0) {
+          acc.unread += 1;
+        }
+
+        if (conversation.company?.id) {
+          acc.withCompany += 1;
+        } else {
+          acc.withoutCompany += 1;
+        }
+
+        return acc;
+      },
+      { total: 0, unread: 0, withCompany: 0, withoutCompany: 0 }
+    );
+  }, [conversations]);
 
   const loadConversations = useCallback(
     async ({ silent = false } = {}) => {
@@ -300,15 +359,15 @@ function WhatsAppInboxPage() {
   }, [loadConversations]);
 
   useEffect(() => {
-    if (!selectedWaId && conversations.length) {
-      setSelectedWaId(conversations[0].wa_id);
+    if (!selectedWaId && organizedConversations.length) {
+      setSelectedWaId(organizedConversations[0].wa_id);
       return;
     }
 
-    if (selectedWaId && !conversations.some((conversation) => conversation.wa_id === selectedWaId)) {
-      setSelectedWaId(conversations[0]?.wa_id || '');
+    if (selectedWaId && !organizedConversations.some((conversation) => conversation.wa_id === selectedWaId)) {
+      setSelectedWaId(organizedConversations[0]?.wa_id || '');
     }
-  }, [conversations, selectedWaId]);
+  }, [organizedConversations, selectedWaId]);
 
   useEffect(() => {
     if (!selectedWaId) {
@@ -450,15 +509,77 @@ function WhatsAppInboxPage() {
                     Buscar
                   </button>
                 </form>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConversationFilter('all')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      conversationFilter === 'all'
+                        ? 'bg-teal-500 text-white'
+                        : 'border border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    Todas ({conversationCounters.total})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConversationFilter('unread')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      conversationFilter === 'unread'
+                        ? 'bg-teal-500 text-white'
+                        : 'border border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    Não lidas ({conversationCounters.unread})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConversationFilter('with_company')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      conversationFilter === 'with_company'
+                        ? 'bg-teal-500 text-white'
+                        : 'border border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    Com empresa ({conversationCounters.withCompany})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConversationFilter('without_company')}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      conversationFilter === 'without_company'
+                        ? 'bg-teal-500 text-white'
+                        : 'border border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    Sem empresa ({conversationCounters.withoutCompany})
+                  </button>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2">
+                  <label htmlFor="conversationSort" className="text-xs font-medium text-slate-400">
+                    Ordenar por
+                  </label>
+                  <select
+                    id="conversationSort"
+                    value={conversationSort}
+                    onChange={(event) => setConversationSort(event.target.value)}
+                    className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-xs text-slate-100 focus:border-teal-400 focus:outline-none"
+                  >
+                    <option value="unread_first">Não lidas primeiro</option>
+                    <option value="recent">Mais recentes</option>
+                  </select>
+                </div>
               </div>
 
               <div className="max-h-[560px] overflow-y-auto">
                 {loadingConversations ? (
                   <div className="p-4 text-sm text-slate-400">Carregando conversas...</div>
-                ) : conversations.length === 0 ? (
+                ) : organizedConversations.length === 0 ? (
                   <div className="p-4 text-sm text-slate-400">Nenhuma conversa encontrada.</div>
                 ) : (
-                  conversations.map((conversation) => {
+                  organizedConversations.map((conversation) => {
                     const isSelected = conversation.wa_id === selectedWaId;
                     const conversationName = getDisplayName(conversation);
                     const preview = conversation.last_message_preview || 'Sem mensagens ainda.';
