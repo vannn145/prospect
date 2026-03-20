@@ -37,6 +37,9 @@ function ThemeToggleButton({ theme, onToggle }) {
 
 function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onToggleTheme, onLogout, authUser }) {
   const isDark = theme === 'dark';
+  const accountPanelClass = isDark
+    ? 'border-slate-600 bg-slate-800/70 p-3'
+    : 'border-slate-200 bg-slate-100 p-3';
 
   function Icon({ type, className = 'h-5 w-5' }) {
     if (type === 'dashboard') {
@@ -139,6 +142,15 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
         </button>
       </div>
 
+      {isOpen && (
+        <UserAccountPanel
+          authUser={authUser}
+          onLogout={onLogout}
+          compact
+          className={accountPanelClass}
+        />
+      )}
+
       <button
         type="button"
         className={`mt-3 flex h-10 w-full items-center gap-2 rounded-xl border px-3 ${
@@ -177,14 +189,6 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
       </nav>
 
       <div className={`mt-auto space-y-2 border-t pt-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        {isOpen && (
-          <UserAccountPanel
-            authUser={authUser}
-            onLogout={onLogout}
-            compact
-            className="border-slate-600 bg-slate-800/70 p-3"
-          />
-        )}
 
         <button
           type="button"
