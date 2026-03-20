@@ -15,6 +15,7 @@ import {
 import LeadsTable from '../components/LeadsTable';
 import SearchForm from '../components/SearchForm';
 import StatCard from '../components/StatCard';
+import { getCategoryLabel } from '../utils/labels';
 
 const DEFAULT_WHATSAPP_MESSAGE = `Olá, tudo bem?
 
@@ -88,6 +89,7 @@ function DashboardPage() {
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const hasSearchScope = Boolean(String(searchScope.city || '').trim() || String(searchScope.category || '').trim());
 
   const loadStats = useCallback(async () => {
     setLoadingStats(true);
@@ -423,7 +425,16 @@ function DashboardPage() {
               <h2 className="text-lg font-semibold text-slate-200">Lista de contatos</h2>
 
             <div className="flex flex-wrap items-center gap-2">
-              {Boolean(searchScope.city || searchScope.category) && (
+              {hasSearchScope && (
+                <div className="rounded-lg border border-teal-700/50 bg-teal-900/30 px-3 py-2 text-sm text-teal-200">
+                  Filtro ativo:
+                  {searchScope.city ? ` ${searchScope.city}` : ''}
+                  {searchScope.city && searchScope.category ? ' • ' : ''}
+                  {searchScope.category ? getCategoryLabel(searchScope.category) : ''}
+                </div>
+              )}
+
+              {hasSearchScope && (
                 <button
                   type="button"
                   onClick={handleClearSearchScope}
