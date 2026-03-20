@@ -147,6 +147,8 @@ function WhatsAppInboxPage() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const messageEndRef = useRef(null);
+  const conversationsListRef = useRef(null);
+  const scrollLockRef = useRef(null);
   const unreadByWaIdRef = useRef(new Map());
   const lastInboundMessageIdByWaIdRef = useRef(new Map());
   const hasLoadedConversationsRef = useRef(false);
@@ -424,9 +426,19 @@ function WhatsAppInboxPage() {
     loadMessages(selectedWaId);
 
     markInboxConversationRead(selectedWaId)
-      .then(() => loadConversations({ silent: true }))
+      .then(() => {
+        loadConversations({ silent: true });
+      })
       .catch(() => null);
   }, [selectedWaId, loadMessages, loadConversations]);
+
+  // Restore scroll position after conversations update
+  useEffect(() => {
+    if (scrollLockRef.current !== null && conversationsListRef.current) {
+      conversationsListRef.current.scrollTop = scrollLockRef.current;
+      scrollLockRef.current = null;
+    }
+  }, [conversations]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -451,16 +463,13 @@ function WhatsAppInboxPage() {
     setActiveSearch(searchInput.trim());
   }
 
-  async function handleOpenConversation(waId) {
+  function handleOpenConversation(waId) {
+    // Save scroll position before conversation changes
+    if (conversationsListRef.current) {
+      scrollLockRef.current = conversationsListRef.current.scrollTop;
+    }
     setSelectedWaId(waId);
     setSuccessMessage('');
-
-    try {
-      await markInboxConversationRead(waId);
-      await loadConversations({ silent: true });
-    } catch {
-      // Não bloqueia navegação por falha de leitura
-    }
   }
 
   async function handleSendReply(event) {
@@ -643,7 +652,7 @@ function WhatsAppInboxPage() {
                 </div>
               </div>
 
-              <div className="max-h-[560px] overflow-y-auto">
+              <div ref={conversationsListRef} className="max-h-[560px] overflow-y-auto">
                 {loadingConversations ? (
                   <div className="p-4 text-sm text-slate-400">Carregando conversas...</div>
                 ) : organizedConversations.length === 0 ? (
