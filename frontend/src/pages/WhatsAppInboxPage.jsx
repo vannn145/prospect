@@ -149,7 +149,6 @@ function WhatsAppInboxPage() {
   const messageEndRef = useRef(null);
   const unreadByWaIdRef = useRef(new Map());
   const lastInboundMessageIdByWaIdRef = useRef(new Map());
-  const selectedConversationUnreadWeightRef = useRef(0);
   const hasLoadedConversationsRef = useRef(false);
   const audioContextRef = useRef(null);
 
@@ -240,12 +239,8 @@ function WhatsAppInboxPage() {
     });
 
     filtered.sort((left, right) => {
-      const leftUnread = left.wa_id === selectedWaId
-        ? Math.max(Number(left.unread_count || 0), selectedConversationUnreadWeightRef.current)
-        : Number(left.unread_count || 0);
-      const rightUnread = right.wa_id === selectedWaId
-        ? Math.max(Number(right.unread_count || 0), selectedConversationUnreadWeightRef.current)
-        : Number(right.unread_count || 0);
+      const leftUnread = Number(left.unread_count || 0);
+      const rightUnread = Number(right.unread_count || 0);
 
       if (conversationSort === 'unread_first' && leftUnread !== rightUnread) {
         return rightUnread - leftUnread;
@@ -258,7 +253,7 @@ function WhatsAppInboxPage() {
     });
 
     return filtered;
-  }, [conversations, conversationFilter, conversationSort, selectedWaId]);
+  }, [conversations, conversationFilter, conversationSort]);
 
   const conversationCounters = useMemo(() => {
     return conversations.reduce(
@@ -457,8 +452,6 @@ function WhatsAppInboxPage() {
   }
 
   async function handleOpenConversation(waId) {
-    const clickedConversation = organizedConversations.find((conversation) => conversation.wa_id === waId);
-    selectedConversationUnreadWeightRef.current = Number(clickedConversation?.unread_count || 0);
     setSelectedWaId(waId);
     setSuccessMessage('');
 
