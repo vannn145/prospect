@@ -359,6 +359,13 @@ function DashboardPage() {
     setCompaniesPage(targetPage);
   }
 
+  function handleClearSearchScope() {
+    setSearchScope({ city: '', category: '' });
+    setCompaniesPage(1);
+    setSuccessMessage('Filtro da busca limpo. Exibindo lista geral.');
+    setErrorMessage('');
+  }
+
   return (
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6">
@@ -416,6 +423,16 @@ function DashboardPage() {
               <h2 className="text-lg font-semibold text-slate-200">Lista de contatos</h2>
 
             <div className="flex flex-wrap items-center gap-2">
+              {Boolean(searchScope.city || searchScope.category) && (
+                <button
+                  type="button"
+                  onClick={handleClearSearchScope}
+                  className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
+                >
+                  Limpar filtro da busca
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={handleEnrichMissingInstagrams}
