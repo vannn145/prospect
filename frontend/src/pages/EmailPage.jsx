@@ -75,6 +75,7 @@ function EmailPage({
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
@@ -237,6 +238,7 @@ function EmailPage({
       setComposeTo('');
       setComposeSubject('');
       setComposeBody('');
+      setIsComposeOpen(false);
       setSuccessMessage('E-mail enviado com sucesso pelo painel.');
       await loadOverview({ silent: true });
     } catch (error) {
@@ -324,56 +326,19 @@ function EmailPage({
           <StatCard title="Falhas no envio" value={loadingOverview ? '...' : Number(reportSummary.error || 0)} />
         </section>
 
-        <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
-          <div className="mb-3 flex flex-col gap-1">
-            <h2 className="text-base font-semibold text-slate-100">Enviar e-mail pelo painel</h2>
-            <p className="text-xs text-slate-500">Use para disparos manuais fora da automação de prospecção.</p>
-          </div>
-
-          <form onSubmit={handleSendEmail} className="grid gap-3 md:grid-cols-2">
-            <input
-              type="email"
-              value={composeTo}
-              onChange={(event) => setComposeTo(event.target.value)}
-              placeholder="Destino (ex.: cliente@empresa.com)"
-              className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
-              required
-            />
-            <input
-              type="text"
-              value={composeSubject}
-              onChange={(event) => setComposeSubject(event.target.value)}
-              placeholder="Assunto"
-              className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
-              required
-            />
-
-            <textarea
-              value={composeBody}
-              onChange={(event) => setComposeBody(event.target.value)}
-              rows={5}
-              placeholder="Escreva a mensagem"
-              className="md:col-span-2 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
-              required
-            />
-
-            <div className="md:col-span-2 flex justify-end">
-              <button
-                type="submit"
-                disabled={sendingEmail}
-                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-600"
-              >
-                {sendingEmail ? 'Enviando...' : 'Enviar e-mail'}
-              </button>
-            </div>
-          </form>
-        </section>
-
         <section className="overflow-hidden rounded-xl border border-slate-700 bg-slate-800 shadow-sm">
-          <div className="grid min-h-[620px] grid-cols-1 lg:grid-cols-[360px_1fr]">
+          <div className="grid min-h-[680px] grid-cols-1 lg:grid-cols-[330px_1fr]">
             <aside className="border-b border-slate-700 bg-slate-900/70 lg:border-b-0 lg:border-r">
               <div className="border-b border-slate-700 p-4">
-                <h2 className="text-base font-semibold text-slate-100">Caixa de entrada</h2>
+                <button
+                  type="button"
+                  onClick={() => setIsComposeOpen(true)}
+                  className="w-full rounded-xl bg-teal-500 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-400"
+                >
+                  + Nova mensagem
+                </button>
+
+                <h2 className="mt-4 text-base font-semibold text-slate-100">Caixa de entrada</h2>
                 <p className="mt-1 text-xs text-slate-400">Conta: {overview.config?.fromEmail || 'contato@impulsestrategy.com.br'}</p>
 
                 <form className="mt-3 flex gap-2" onSubmit={handleSearchSubmit}>
@@ -416,9 +381,12 @@ function EmailPage({
                       <button
                         type="button"
                         key={message.uid}
-                        onClick={() => setSelectedUid(message.uid)}
+                        onClick={() => {
+                          setIsComposeOpen(false);
+                          setSelectedUid(message.uid);
+                        }}
                         className={`w-full border-b border-slate-700 px-4 py-3 text-left transition ${
-                          isSelected ? 'bg-slate-700/60' : 'hover:bg-slate-800/80'
+                          isSelected ? 'bg-slate-700/60 shadow-inner' : 'hover:bg-slate-800/80'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -427,7 +395,10 @@ function EmailPage({
                           </span>
                           <span className="flex-shrink-0 text-[11px] text-slate-400">{formatDateTime(message.date)}</span>
                         </div>
-                        <p className="mt-1 truncate text-xs text-slate-400">{message.from || '(sem remetente)'}</p>
+                        <p className="mt-1 truncate text-xs text-slate-400">
+                          {!message.seen && <span className="mr-1 inline-flex h-2 w-2 rounded-full bg-teal-400" />}
+                          {message.from || '(sem remetente)'}
+                        </p>
                         <p className="mt-1 text-xs text-slate-500">{message.preview || 'Sem prévia.'}</p>
                       </button>
                     );
@@ -437,20 +408,89 @@ function EmailPage({
             </aside>
 
             <section className="flex min-h-[620px] flex-col bg-slate-800">
-              {selectedUid ? (
+              <div className="flex items-center justify-between border-b border-slate-700 bg-slate-900/70 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">{isComposeOpen ? 'Nova mensagem' : 'Leitura'}</p>
+                  <p className="text-xs text-slate-400">
+                    {isComposeOpen ? 'Envio manual estilo caixa de saída.' : 'Visualização da conversa selecionada.'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {isComposeOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsComposeOpen(false)}
+                      className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"
+                    >
+                      Voltar para inbox
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsComposeOpen(true)}
+                      className="rounded-lg bg-teal-500 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-400"
+                    >
+                      Redigir
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isComposeOpen ? (
+                <form onSubmit={handleSendEmail} className="flex flex-1 flex-col gap-3 p-4">
+                  <input
+                    type="email"
+                    value={composeTo}
+                    onChange={(event) => setComposeTo(event.target.value)}
+                    placeholder="Para"
+                    className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                    required
+                  />
+
+                  <input
+                    type="text"
+                    value={composeSubject}
+                    onChange={(event) => setComposeSubject(event.target.value)}
+                    placeholder="Assunto"
+                    className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                    required
+                  />
+
+                  <textarea
+                    value={composeBody}
+                    onChange={(event) => setComposeBody(event.target.value)}
+                    rows={14}
+                    placeholder="Escreva sua mensagem"
+                    className="min-h-[340px] flex-1 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                    required
+                  />
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={sendingEmail}
+                      className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-600"
+                    >
+                      {sendingEmail ? 'Enviando...' : 'Enviar e-mail'}
+                    </button>
+                  </div>
+                </form>
+              ) : selectedUid ? (
                 loadingMessage ? (
                   <div className="p-6 text-sm text-slate-400">Carregando mensagem...</div>
                 ) : selectedMessage ? (
                   <>
-                    <div className="border-b border-slate-700 bg-slate-900/70 px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-100">{selectedMessage.subject || '(sem assunto)'}</p>
-                      <p className="mt-1 text-xs text-slate-400">De: {selectedMessage.from || '-'}</p>
-                      <p className="mt-0.5 text-xs text-slate-400">Para: {selectedMessage.to || '-'}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{formatDateTime(selectedMessage.date)}</p>
+                    <div className="border-b border-slate-700 px-4 py-4">
+                      <p className="text-lg font-semibold text-slate-100">{selectedMessage.subject || '(sem assunto)'}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                        <span><strong className="text-slate-300">De:</strong> {selectedMessage.from || '-'}</span>
+                        <span><strong className="text-slate-300">Para:</strong> {selectedMessage.to || '-'}</span>
+                        <span>{formatDateTime(selectedMessage.date)}</span>
+                      </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4">
-                      <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
+                    <div className="flex-1 overflow-y-auto p-5">
+                      <pre className="whitespace-pre-wrap rounded-xl border border-slate-700 bg-slate-900/70 p-4 text-sm leading-relaxed text-slate-200">
                         {selectedMessage.text || 'Mensagem sem conteúdo de texto.'}
                       </pre>
                     </div>
