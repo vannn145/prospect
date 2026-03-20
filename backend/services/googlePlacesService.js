@@ -54,6 +54,49 @@ const CATEGORY_ALIASES = {
   accounting: 'accountant',
 };
 
+function getSafePositiveInt(value, fallback, { min = 1, max = 20 } = {}) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(max, Math.floor(parsed)));
+}
+
+async function processWithConcurrency(items, worker, concurrency) {
+  const safeConcurrency = getSafePositiveInt(concurrency, 1, { min: 1, max: 30 });
+  const list = Array.isArray(items) ? items : [];
+
+  if (!list.length) {
+    return [];
+  }
+
+  const results = new Array(list.length);
+  let nextIndex = 0;
+
+  async function runWorker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+
+      if (currentIndex >= list.length) {
+        return;
+      }
+
+      results[currentIndex] = await worker(list[currentIndex], currentIndex);
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(safeConcurrency, list.length) },
+    () => runWorker()
+  );
+
+  await Promise.all(workers);
+  return results;
+}
+
 function slugify(value) {
   return String(value || '')
     .normalize('NFD')
@@ -277,25 +320,33 @@ async function fetchPlacesByCityAndCategory({ city, category, radius = 5000, max
   }
 
   const allUnique = [...uniqueByPlaceId.values()];
-  const detailedResults = [];
+  const detailsConcurrency = getSafePositiveInt(
+    process.env.GOOGLE_PLACE_DETAILS_CONCURRENCY,
+    6,
+    { min: 1, max: 15 }
+  );
 
-  for (const place of allUnique) {
-    const details = await fetchPlaceDetails(place.place_id);
+  const detailedResults = await processWithConcurrency(
+    allUnique,
+    async (place) => {
+      const details = await fetchPlaceDetails(place.place_id);
 
-    detailedResults.push({
-      name: details?.name || place.name || null,
-      phone_number: details?.phone_number || null,
-      address: details?.address || place.vicinity || null,
-      city,
-      category,
-      place_id: place.place_id,
-      website: details?.website || null,
-      rating: details?.rating || place.rating || null,
-      total_reviews: details?.total_reviews || place.user_ratings_total || 0,
-      latitude: details?.latitude || place.geometry?.location?.lat || null,
-      longitude: details?.longitude || place.geometry?.location?.lng || null,
-    });
-  }
+      return {
+        name: details?.name || place.name || null,
+        phone_number: details?.phone_number || null,
+        address: details?.address || place.vicinity || null,
+        city,
+        category,
+        place_id: place.place_id,
+        website: details?.website || null,
+        rating: details?.rating || place.rating || null,
+        total_reviews: details?.total_reviews || place.user_ratings_total || 0,
+        latitude: details?.latitude || place.geometry?.location?.lat || null,
+        longitude: details?.longitude || place.geometry?.location?.lng || null,
+      };
+    },
+    detailsConcurrency
+  );
 
   return detailedResults;
 }

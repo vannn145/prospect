@@ -100,6 +100,8 @@ Campos principais:
 - `AUTH_USERNAME`, `AUTH_PASSWORD`, `AUTH_JWT_SECRET`
 - `META_WHATSAPP_PHONE_NUMBER_ID`
 - `META_WHATSAPP_ACCESS_TOKEN`
+- `GOOGLE_PLACE_DETAILS_CONCURRENCY` (opcional; padrão `6`, acelera coleta de detalhes do Places com paralelismo controlado)
+- `LEAD_PROCESS_CONCURRENCY` (opcional; padrão `4`, acelera classificação e salvamento dos leads por busca)
 
 Para envio automático via Meta WhatsApp Cloud API, também configure:
 
