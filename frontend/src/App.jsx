@@ -117,21 +117,11 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
           : 'border-slate-200 bg-white/95 text-slate-700 shadow-lg'
       }`}
     >
-      <div className="relative flex items-center gap-3 px-1 py-2">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500 text-sm font-bold text-white">
-          KL
-        </span>
-        {isOpen && (
-          <div>
-            <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Keula</p>
-            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Web developer</p>
-          </div>
-        )}
-
+      <div className="relative h-10">
         <button
           type="button"
           onClick={onToggle}
-          className={`absolute -right-5 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm ${
+          className={`absolute -right-5 top-1 inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm ${
             isDark
               ? 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
               : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
