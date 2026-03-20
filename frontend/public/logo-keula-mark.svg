@@ -1,0 +1,11 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="logoMarkTitle logoMarkDesc">
+  <title id="logoMarkTitle">Marca Keula</title>
+  <desc id="logoMarkDesc">Marca da Keula sem fundo, com símbolo geométrico em verde e teal.</desc>
+
+  <path d="M96 58V182" stroke="#0F172A" stroke-width="18" stroke-linecap="round"/>
+  <path d="M96 120L148 62" stroke="#14B8A6" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M96 122L152 182" stroke="#22C55E" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M174 56C190 72 200 95 200 120C200 145 190 168 174 184" stroke="#14B8A6" stroke-width="12" stroke-linecap="round"/>
+  <path d="M66 56C50 72 40 95 40 120C40 145 50 168 66 184" stroke="#22C55E" stroke-width="12" stroke-linecap="round"/>
+</svg>
