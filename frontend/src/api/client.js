@@ -70,6 +70,24 @@ export async function fetchKanbanCards() {
   return request('/kanban/cards');
 }
 
+export async function fetchKanbanColumns() {
+  return request('/kanban/columns');
+}
+
+export async function createKanbanColumn(payload) {
+  return request('/kanban/columns', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function deleteKanbanColumn(columnKey) {
+  const normalizedKey = encodeURIComponent(String(columnKey || '').trim());
+  return request(`/kanban/columns/${normalizedKey}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function addCompanyToKanban(companyId, stage) {
   return request('/kanban/cards', {
     method: 'POST',

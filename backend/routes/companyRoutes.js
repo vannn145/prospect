@@ -14,6 +14,9 @@ const {
   enrichMissingInstagrams,
 } = require('../services/instagramService');
 const {
+  getKanbanColumns,
+  createKanbanColumn,
+  deleteKanbanColumn,
   getKanbanCards,
   getKanbanCardById,
   addCompanyToKanban,
@@ -708,6 +711,39 @@ router.get('/kanban/cards', async (req, res, next) => {
   try {
     const cards = await getKanbanCards();
     return res.json(cards);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/kanban/columns', async (req, res, next) => {
+  try {
+    const columns = await getKanbanColumns();
+    return res.json({ columns });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/kanban/columns', async (req, res, next) => {
+  try {
+    const column = await createKanbanColumn(req.body || {});
+    return res.status(201).json({
+      message: 'Coluna criada com sucesso.',
+      column,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/kanban/columns/:key', async (req, res, next) => {
+  try {
+    const result = await deleteKanbanColumn(req.params.key);
+    return res.json({
+      message: 'Coluna excluída com sucesso.',
+      ...result,
+    });
   } catch (error) {
     return next(error);
   }

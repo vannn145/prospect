@@ -1,17 +1,16 @@
 const { query } = require('../database/db');
 
-const KANBAN_STAGES = ['entrada', 'contato', 'proposta', 'negociacao', 'fechado', 'perdido'];
+const DEFAULT_COLUMNS = [
+  { key: 'entrada', title: 'Entrada', position: 1 },
+  { key: 'contato', title: 'Contato', position: 2 },
+  { key: 'proposta', title: 'Proposta', position: 3 },
+  { key: 'negociacao', title: 'Negociação', position: 4 },
+  { key: 'fechado', title: 'Fechado', position: 5 },
+  { key: 'perdido', title: 'Perdido', position: 6 },
+];
 
 const STAGE_ORDER_SQL = `
-  CASE kc.stage
-    WHEN 'entrada' THEN 1
-    WHEN 'contato' THEN 2
-    WHEN 'proposta' THEN 3
-    WHEN 'negociacao' THEN 4
-    WHEN 'fechado' THEN 5
-    WHEN 'perdido' THEN 6
-    ELSE 99
-  END
+  COALESCE(kcol.position, 999)
 `;
 
 function sanitizeText(value) {
@@ -49,10 +48,76 @@ function normalizeDueDate(value) {
   return normalized;
 }
 
-function validateStage(stage) {
-  if (!KANBAN_STAGES.includes(stage)) {
-    throw new Error(`stage inválido. Use: ${KANBAN_STAGES.join(', ')}`);
+function normalizeColumnKey(value) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80);
+
+  if (!normalized) {
+    throw new Error('Nome da coluna inválido.');
   }
+
+  return normalized;
+}
+
+function mapColumn(row) {
+  return {
+    id: row.id,
+    key: row.key,
+    title: row.title,
+    position: row.position,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+async function ensureDefaultColumns() {
+  for (const column of DEFAULT_COLUMNS) {
+    await query(
+      `
+        INSERT INTO kanban_columns (key, title, position)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (key) DO NOTHING
+      `,
+      [column.key, column.title, column.position]
+    );
+  }
+}
+
+async function getKanbanColumns() {
+  await ensureDefaultColumns();
+
+  const result = await query(
+    `
+      SELECT id, key, title, position, created_at, updated_at
+      FROM kanban_columns
+      ORDER BY position ASC, created_at ASC
+    `
+  );
+
+  return result.rows.map(mapColumn);
+}
+
+async function validateStage(stage) {
+  const normalizedStage = String(stage || '').trim();
+
+  if (!normalizedStage) {
+    throw new Error('stage inválido.');
+  }
+
+  const result = await query('SELECT key FROM kanban_columns WHERE key = $1 LIMIT 1', [normalizedStage]);
+
+  if (!result.rows[0]) {
+    const columns = await getKanbanColumns();
+    throw new Error(`stage inválido. Use: ${columns.map((item) => item.key).join(', ')}`);
+  }
+
+  return normalizedStage;
 }
 
 function mapCard(row) {
@@ -118,6 +183,8 @@ async function getKanbanCardById(cardId) {
 }
 
 async function getKanbanCards() {
+  await ensureDefaultColumns();
+
   const result = await query(`
     SELECT
       kc.id,
@@ -140,6 +207,7 @@ async function getKanbanCards() {
       c.contacted AS company_contacted
     FROM kanban_cards kc
     INNER JOIN companies c ON c.id = kc.company_id
+    LEFT JOIN kanban_columns kcol ON kcol.key = kc.stage
     ORDER BY ${STAGE_ORDER_SQL}, kc.updated_at DESC
   `);
 
@@ -153,7 +221,7 @@ async function addCompanyToKanban({ companyId, stage = 'entrada' }) {
     throw new Error('companyId inválido.');
   }
 
-  validateStage(stage);
+  const normalizedStage = await validateStage(stage);
 
   const companyExists = await query('SELECT id FROM companies WHERE id = $1', [parsedCompanyId]);
   if (!companyExists.rows[0]) {
@@ -168,7 +236,7 @@ async function addCompanyToKanban({ companyId, stage = 'entrada' }) {
       DO UPDATE SET updated_at = NOW()
       RETURNING id;
     `,
-    [parsedCompanyId, stage]
+    [parsedCompanyId, normalizedStage]
   );
 
   const cardId = insertResult.rows[0]?.id;
@@ -181,8 +249,8 @@ async function updateKanbanCard(cardId, payload) {
 
   if (Object.prototype.hasOwnProperty.call(payload, 'stage')) {
     const stage = sanitizeText(payload.stage) || 'entrada';
-    validateStage(stage);
-    values.push(stage);
+    const normalizedStage = await validateStage(stage);
+    values.push(normalizedStage);
     updates.push(`stage = $${values.length}`);
   }
 
@@ -228,8 +296,75 @@ async function updateKanbanCard(cardId, payload) {
   return fetchCardById(result.rows[0].id);
 }
 
+async function createKanbanColumn({ title, key }) {
+  await ensureDefaultColumns();
+
+  const normalizedTitle = sanitizeText(title);
+
+  if (!normalizedTitle) {
+    throw new Error('title é obrigatório para criar a coluna.');
+  }
+
+  const normalizedKey = normalizeColumnKey(key || normalizedTitle);
+  const nextPositionResult = await query('SELECT COALESCE(MAX(position), 0) + 1 AS next_position FROM kanban_columns');
+  const nextPosition = Number(nextPositionResult.rows[0]?.next_position || 1);
+
+  const result = await query(
+    `
+      INSERT INTO kanban_columns (key, title, position, updated_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING id, key, title, position, created_at, updated_at
+    `,
+    [normalizedKey, normalizedTitle, nextPosition]
+  );
+
+  return mapColumn(result.rows[0]);
+}
+
+async function deleteKanbanColumn(columnKey) {
+  await ensureDefaultColumns();
+
+  const normalizedKey = normalizeColumnKey(columnKey);
+  const columns = await getKanbanColumns();
+  const target = columns.find((item) => item.key === normalizedKey);
+
+  if (!target) {
+    throw new Error('Coluna não encontrada.');
+  }
+
+  if (columns.length <= 1) {
+    throw new Error('Não é possível excluir a última coluna do Kanban.');
+  }
+
+  const fallback = columns
+    .filter((item) => item.key !== normalizedKey)
+    .sort((left, right) => left.position - right.position)[0];
+
+  await query('UPDATE kanban_cards SET stage = $1, updated_at = NOW() WHERE stage = $2', [fallback.key, normalizedKey]);
+  await query('DELETE FROM kanban_columns WHERE key = $1', [normalizedKey]);
+
+  const refreshed = await getKanbanColumns();
+
+  for (let index = 0; index < refreshed.length; index += 1) {
+    const column = refreshed[index];
+    const desiredPosition = index + 1;
+
+    if (Number(column.position) !== desiredPosition) {
+      await query('UPDATE kanban_columns SET position = $1, updated_at = NOW() WHERE id = $2', [desiredPosition, column.id]);
+    }
+  }
+
+  return {
+    deletedKey: normalizedKey,
+    movedCardsTo: fallback.key,
+  };
+}
+
 module.exports = {
-  KANBAN_STAGES,
+  KANBAN_STAGES: DEFAULT_COLUMNS.map((item) => item.key),
+  getKanbanColumns,
+  createKanbanColumn,
+  deleteKanbanColumn,
   getKanbanCards,
   getKanbanCardById,
   addCompanyToKanban,

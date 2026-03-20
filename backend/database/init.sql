@@ -48,6 +48,46 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
 CREATE INDEX IF NOT EXISTS idx_kanban_cards_stage ON kanban_cards(stage);
 CREATE INDEX IF NOT EXISTS idx_kanban_cards_updated_at ON kanban_cards(updated_at DESC);
 
+DO $$
+DECLARE
+  constraint_name TEXT;
+BEGIN
+  SELECT conname INTO constraint_name
+  FROM pg_constraint
+  WHERE conrelid = 'kanban_cards'::regclass
+    AND contype = 'c'
+    AND pg_get_constraintdef(oid) ILIKE '%stage%';
+
+  IF constraint_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE kanban_cards DROP CONSTRAINT %I', constraint_name);
+  END IF;
+END
+$$;
+
+ALTER TABLE kanban_cards ALTER COLUMN stage TYPE VARCHAR(80);
+
+CREATE TABLE IF NOT EXISTS kanban_columns (
+  id BIGSERIAL PRIMARY KEY,
+  key VARCHAR(80) NOT NULL UNIQUE,
+  title VARCHAR(80) NOT NULL,
+  position INTEGER NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kanban_columns_position ON kanban_columns(position);
+CREATE INDEX IF NOT EXISTS idx_kanban_columns_title ON kanban_columns(title);
+
+INSERT INTO kanban_columns (key, title, position)
+VALUES
+  ('entrada', 'Entrada', 1),
+  ('contato', 'Contato', 2),
+  ('proposta', 'Proposta', 3),
+  ('negociacao', 'Negociação', 4),
+  ('fechado', 'Fechado', 5),
+  ('perdido', 'Perdido', 6)
+ON CONFLICT (key) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   id BIGSERIAL PRIMARY KEY,
   wa_id TEXT NOT NULL UNIQUE,
