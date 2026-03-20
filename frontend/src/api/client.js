@@ -137,7 +137,8 @@ export async function fetchEmailOverview() {
   return request('/email/overview');
 }
 
-export async function fetchEmailInboxMessages(search = '', limit = 25) {
+export async function fetchEmailInboxMessages(search = '', limit = 25, options = {}) {
+  const { prospectionOnly = true } = options || {};
   const query = new URLSearchParams();
 
   if (search?.trim()) {
@@ -145,8 +146,16 @@ export async function fetchEmailInboxMessages(search = '', limit = 25) {
   }
 
   query.set('limit', String(Number(limit || 25)));
+  query.set('prospectionOnly', String(Boolean(prospectionOnly)));
 
   return request(`/email/inbox/messages?${query.toString()}`);
+}
+
+export async function sendEmailFromPanel(payload) {
+  return request('/email/send', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
 }
 
 export async function fetchEmailInboxMessage(uid) {

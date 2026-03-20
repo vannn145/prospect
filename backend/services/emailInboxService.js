@@ -1,5 +1,8 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
+const nodemailer = require('nodemailer');
+
+const { getLatestEmailSendReport } = require('./emailCampaignService');
 
 function buildHttpError(message, statusCode = 400) {
   const error = new Error(message);
@@ -13,6 +16,22 @@ function parseBoolean(value, fallback = false) {
   }
 
   return ['1', 'true', 'yes', 'on'].includes(String(value).trim().toLowerCase());
+}
+
+function parseAddressEmails(value) {
+  return String(value || '')
+    .match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)?.map((item) => item.toLowerCase()) || [];
+}
+
+function parseStringArray(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function buildPreview(text) {
@@ -48,8 +67,12 @@ function getAddressText(addressObject) {
 
 function getEmailConfig() {
   const fromEmail = process.env.OUTREACH_FROM_EMAIL || 'contato@impulsestrategy.com.br';
+  const smtpHost = process.env.OUTREACH_SMTP_HOST || 'smtp.hostinger.com';
+  const smtpPort = Number(process.env.OUTREACH_SMTP_PORT || 465);
+  const smtpSecure = parseBoolean(process.env.OUTREACH_SMTP_SECURE, smtpPort === 465);
   const smtpUser = process.env.OUTREACH_SMTP_USER || fromEmail;
   const smtpPass = process.env.OUTREACH_SMTP_PASS || '';
+  const replyTo = process.env.OUTREACH_EMAIL_REPLY_TO || '';
   const imapHost = process.env.OUTREACH_IMAP_HOST || 'imap.hostinger.com';
   const imapPort = Number(process.env.OUTREACH_IMAP_PORT || 993);
   const imapSecure = parseBoolean(process.env.OUTREACH_IMAP_SECURE, imapPort === 993);
@@ -58,6 +81,10 @@ function getEmailConfig() {
 
   return {
     fromEmail,
+    smtpHost,
+    smtpPort,
+    smtpSecure,
+    replyTo,
     smtpConfigured: Boolean(smtpUser && smtpPass),
     smtpUserConfigured: Boolean(smtpUser),
     smtpPassConfigured: Boolean(smtpPass),
@@ -68,6 +95,93 @@ function getEmailConfig() {
     imapUser,
     imapPass,
   };
+}
+
+function ensureSmtpConfigured() {
+  const config = getEmailConfig();
+
+  if (config.smtpConfigured && config.smtpHost) {
+    return config;
+  }
+
+  const missing = [];
+
+  if (!config.smtpHost) {
+    missing.push('OUTREACH_SMTP_HOST');
+  }
+
+  if (!config.smtpUser) {
+    missing.push('OUTREACH_SMTP_USER');
+  }
+
+  if (!config.smtpPass) {
+    missing.push('OUTREACH_SMTP_PASS');
+  }
+
+  throw buildHttpError(`SMTP não configurado. Preencha: ${missing.join(', ')}`, 400);
+}
+
+function buildProspectionKeywords() {
+  return parseStringArray(process.env.OUTREACH_PROSPECTION_KEYWORDS || [
+    'prospec',
+    'prospecção',
+    'proposta',
+    'parceria',
+    'comercial',
+    'orçamento',
+    'reunião',
+    'demo',
+    'apresentação comercial',
+    'diagnóstico gratuito',
+    'chamada comercial',
+    'follow up',
+  ]);
+}
+
+function buildIgnoredInboxKeywords() {
+  return parseStringArray(process.env.OUTREACH_IGNORE_INBOX_KEYWORDS || [
+    'newsletter',
+    'descadastre',
+    'unsubscribe',
+    'black friday',
+    'cupom',
+    'promoção',
+    'oferta',
+    'google alerts',
+    'notificação linkedin',
+    'no-reply',
+    'noreply',
+    'do-not-reply',
+  ]);
+}
+
+function getProspectionContext() {
+  const report = getLatestEmailSendReport(1200);
+  const emailSet = new Set();
+  const domainSet = new Set();
+
+  for (const item of report?.items || []) {
+    for (const email of parseAddressEmails(item.to_email)) {
+      emailSet.add(email);
+      const [, domain] = email.split('@');
+      if (domain) {
+        domainSet.add(domain);
+      }
+    }
+  }
+
+  return {
+    report,
+    knownEmails: emailSet,
+    knownDomains: domainSet,
+    includeKeywords: buildProspectionKeywords().map((item) => item.toLowerCase()),
+    ignoreKeywords: buildIgnoredInboxKeywords().map((item) => item.toLowerCase()),
+  };
+}
+
+function extractEmailDomain(email) {
+  const [, domain] = String(email || '').toLowerCase().split('@');
+  return domain || '';
 }
 
 function ensureImapConfigured() {
@@ -168,6 +282,34 @@ function matchesSearch(message, search) {
   return haystack.includes(search.toLowerCase());
 }
 
+function isProspectionRelatedMessage(message, context) {
+  const allContent = [message.subject, message.from, message.to, message.preview, message.text]
+    .join(' ')
+    .toLowerCase();
+
+  if (context.ignoreKeywords.some((keyword) => keyword && allContent.includes(keyword))) {
+    return false;
+  }
+
+  const addresses = [
+    ...parseAddressEmails(message.from),
+    ...parseAddressEmails(message.to),
+  ];
+
+  for (const email of addresses) {
+    if (context.knownEmails.has(email)) {
+      return true;
+    }
+
+    const domain = extractEmailDomain(email);
+    if (domain && context.knownDomains.has(domain)) {
+      return true;
+    }
+  }
+
+  return context.includeKeywords.some((keyword) => keyword && allContent.includes(keyword));
+}
+
 async function getInboxSummary() {
   return withImapClient(async (client) => {
     const status = await client.status('INBOX', { messages: true, unseen: true });
@@ -180,12 +322,13 @@ async function getInboxSummary() {
   });
 }
 
-async function listInboxMessages({ limit = 25, search = '' } = {}) {
+async function listInboxMessages({ limit = 25, search = '', prospectionOnly = true } = {}) {
   return withImapClient(async (client) => {
     const mailbox = await client.mailboxOpen('INBOX');
     const totalMessages = Number(mailbox.exists || 0);
     const normalizedLimit = Math.max(1, Math.min(Number(limit || 25), 50));
     const rangeStart = Math.max(1, totalMessages - normalizedLimit + 1);
+    const context = prospectionOnly ? getProspectionContext() : null;
 
     const metas = [];
 
@@ -205,6 +348,10 @@ async function listInboxMessages({ limit = 25, search = '' } = {}) {
     for (const meta of metas) {
       const parsed = await downloadParsedMessage(client, meta.uid);
       const normalized = normalizeParsedMessage(meta.uid, meta, parsed);
+
+      if (prospectionOnly && !isProspectionRelatedMessage(normalized, context)) {
+        continue;
+      }
 
       if (matchesSearch(normalized, search)) {
         messages.push({
@@ -226,6 +373,51 @@ async function listInboxMessages({ limit = 25, search = '' } = {}) {
       messages,
     };
   });
+}
+
+async function sendEmailFromPanel({ to, subject, text, html }) {
+  const config = ensureSmtpConfigured();
+  const normalizedTo = parseAddressEmails(to)[0] || '';
+  const normalizedSubject = String(subject || '').trim();
+  const normalizedText = String(text || '').trim();
+  const normalizedHtml = String(html || '').trim();
+
+  if (!normalizedTo) {
+    throw buildHttpError('Informe um e-mail de destino válido.', 400);
+  }
+
+  if (!normalizedSubject) {
+    throw buildHttpError('Informe o assunto do e-mail.', 400);
+  }
+
+  if (!normalizedText && !normalizedHtml) {
+    throw buildHttpError('Informe o corpo do e-mail.', 400);
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: config.smtpHost,
+    port: config.smtpPort,
+    secure: config.smtpSecure,
+    auth: {
+      user: config.smtpUser,
+      pass: config.smtpPass,
+    },
+  });
+
+  const result = await transporter.sendMail({
+    from: config.fromEmail,
+    to: normalizedTo,
+    subject: normalizedSubject,
+    ...(normalizedText ? { text: normalizedText } : {}),
+    ...(normalizedHtml ? { html: normalizedHtml } : {}),
+    ...(config.replyTo ? { replyTo: config.replyTo } : {}),
+  });
+
+  return {
+    to: normalizedTo,
+    subject: normalizedSubject,
+    messageId: result.messageId || null,
+  };
 }
 
 async function getInboxMessage(uid) {
@@ -259,4 +451,5 @@ module.exports = {
   getInboxSummary,
   listInboxMessages,
   getInboxMessage,
+  sendEmailFromPanel,
 };

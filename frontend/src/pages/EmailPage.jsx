@@ -4,6 +4,7 @@ import {
   fetchEmailOverview,
   fetchEmailInboxMessage,
   fetchEmailInboxMessages,
+  sendEmailFromPanel,
 } from '../api/client';
 import StatCard from '../components/StatCard';
 import UserAccountPanel from '../components/UserAccountPanel';
@@ -69,6 +70,12 @@ function EmailPage({
 
   const [searchInput, setSearchInput] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
+  const [prospectionOnly, setProspectionOnly] = useState(true);
+
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -105,7 +112,7 @@ function EmailPage({
     }
 
     try {
-      const response = await fetchEmailInboxMessages(activeSearch, 35);
+      const response = await fetchEmailInboxMessages(activeSearch, 35, { prospectionOnly });
       const nextMessages = Array.isArray(response?.messages) ? response.messages : [];
 
       setMessages(nextMessages);
@@ -136,7 +143,7 @@ function EmailPage({
         setLoadingMessages(false);
       }
     }
-  }, [activeSearch, selectedUid]);
+  }, [activeSearch, prospectionOnly, selectedUid]);
 
   const loadSelectedMessage = useCallback(async (uid, { silent = false } = {}) => {
     if (!uid) {
@@ -211,6 +218,31 @@ function EmailPage({
       setSuccessMessage('Caixa de entrada atualizada com sucesso.');
     } catch {
       // Erros já tratados nos loaders
+    }
+  }
+
+  async function handleSendEmail(event) {
+    event.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    setSendingEmail(true);
+
+    try {
+      await sendEmailFromPanel({
+        to: composeTo,
+        subject: composeSubject,
+        text: composeBody,
+      });
+
+      setComposeTo('');
+      setComposeSubject('');
+      setComposeBody('');
+      setSuccessMessage('E-mail enviado com sucesso pelo painel.');
+      await loadOverview({ silent: true });
+    } catch (error) {
+      setErrorMessage(error.message || 'Falha ao enviar e-mail.');
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -292,6 +324,51 @@ function EmailPage({
           <StatCard title="Falhas no envio" value={loadingOverview ? '...' : Number(reportSummary.error || 0)} />
         </section>
 
+        <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
+          <div className="mb-3 flex flex-col gap-1">
+            <h2 className="text-base font-semibold text-slate-100">Enviar e-mail pelo painel</h2>
+            <p className="text-xs text-slate-500">Use para disparos manuais fora da automação de prospecção.</p>
+          </div>
+
+          <form onSubmit={handleSendEmail} className="grid gap-3 md:grid-cols-2">
+            <input
+              type="email"
+              value={composeTo}
+              onChange={(event) => setComposeTo(event.target.value)}
+              placeholder="Destino (ex.: cliente@empresa.com)"
+              className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+              required
+            />
+            <input
+              type="text"
+              value={composeSubject}
+              onChange={(event) => setComposeSubject(event.target.value)}
+              placeholder="Assunto"
+              className="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+              required
+            />
+
+            <textarea
+              value={composeBody}
+              onChange={(event) => setComposeBody(event.target.value)}
+              rows={5}
+              placeholder="Escreva a mensagem"
+              className="md:col-span-2 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+              required
+            />
+
+            <div className="md:col-span-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={sendingEmail}
+                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-600"
+              >
+                {sendingEmail ? 'Enviando...' : 'Enviar e-mail'}
+              </button>
+            </div>
+          </form>
+        </section>
+
         <section className="overflow-hidden rounded-xl border border-slate-700 bg-slate-800 shadow-sm">
           <div className="grid min-h-[620px] grid-cols-1 lg:grid-cols-[360px_1fr]">
             <aside className="border-b border-slate-700 bg-slate-900/70 lg:border-b-0 lg:border-r">
@@ -314,6 +391,16 @@ function EmailPage({
                     Buscar
                   </button>
                 </form>
+
+                <label className="mt-3 flex items-center gap-2 text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={prospectionOnly}
+                    onChange={(event) => setProspectionOnly(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-teal-500 focus:ring-teal-400"
+                  />
+                  Mostrar apenas e-mails relacionados à prospecção
+                </label>
               </div>
 
               <div className="max-h-[560px] overflow-y-auto">

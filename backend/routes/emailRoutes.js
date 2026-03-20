@@ -6,6 +6,7 @@ const {
   getInboxSummary,
   listInboxMessages,
   getInboxMessage,
+  sendEmailFromPanel,
 } = require('../services/emailInboxService');
 
 const router = express.Router();
@@ -29,9 +30,26 @@ router.get('/overview', async (req, res, next) => {
 
 router.get('/inbox/messages', async (req, res, next) => {
   try {
-    const { search = '', limit = 25 } = req.query;
-    const response = await listInboxMessages({ search, limit: Number(limit || 25) });
+    const { search = '', limit = 25, prospectionOnly = 'true' } = req.query;
+    const normalizedProspectionOnly = ['1', 'true', 'yes', 'on'].includes(String(prospectionOnly).toLowerCase());
+    const response = await listInboxMessages({
+      search,
+      limit: Number(limit || 25),
+      prospectionOnly: normalizedProspectionOnly,
+    });
     return res.json(response);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/send', async (req, res, next) => {
+  try {
+    const response = await sendEmailFromPanel(req.body || {});
+    return res.status(201).json({
+      success: true,
+      ...response,
+    });
   } catch (error) {
     return next(error);
   }

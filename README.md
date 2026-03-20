@@ -160,6 +160,8 @@ Para habilitar a caixa de entrada na página de E-mail, configure também:
 - `OUTREACH_IMAP_SECURE` (`true` para `993`)
 - `OUTREACH_IMAP_USER` (normalmente o mesmo e-mail do SMTP)
 - `OUTREACH_IMAP_PASS` (opcional; se vazio usa `OUTREACH_SMTP_PASS`)
+- `OUTREACH_PROSPECTION_KEYWORDS` (opcional; palavras-chave de inclusão para inbox de prospecção, separadas por vírgula)
+- `OUTREACH_IGNORE_INBOX_KEYWORDS` (opcional; palavras-chave para ocultar ruído como newsletter/promoções, separadas por vírgula)
 
 Depois, rode:
 
@@ -262,6 +264,7 @@ Variáveis de autenticação no `backend/.env`:
 - `GET /email/overview`
 - `GET /email/inbox/messages`
 - `GET /email/inbox/messages/:uid`
+- `POST /email/send`
 
 Também disponíveis com prefixo `/api`, por exemplo: `GET /api/companies`.
 
