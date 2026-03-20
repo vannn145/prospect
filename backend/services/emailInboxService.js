@@ -66,24 +66,26 @@ function getAddressText(addressObject) {
 }
 
 function getEmailConfig() {
-  const fromEmail = process.env.OUTREACH_FROM_EMAIL || 'contato@impulsestrategy.com.br';
-  const smtpHost = process.env.OUTREACH_SMTP_HOST || 'smtp.hostinger.com';
+  const fromEmail = String(process.env.OUTREACH_FROM_EMAIL || 'contato@impulsestrategy.com.br').trim();
+  const smtpHost = String(process.env.OUTREACH_SMTP_HOST || 'smtp.hostinger.com').trim();
   const smtpPort = Number(process.env.OUTREACH_SMTP_PORT || 465);
   const smtpSecure = parseBoolean(process.env.OUTREACH_SMTP_SECURE, smtpPort === 465);
-  const smtpUser = process.env.OUTREACH_SMTP_USER || fromEmail;
-  const smtpPass = process.env.OUTREACH_SMTP_PASS || '';
-  const replyTo = process.env.OUTREACH_EMAIL_REPLY_TO || '';
-  const imapHost = process.env.OUTREACH_IMAP_HOST || 'imap.hostinger.com';
+  const smtpUser = String(process.env.OUTREACH_SMTP_USER || fromEmail).trim();
+  const smtpPass = String(process.env.OUTREACH_SMTP_PASS || '').trim();
+  const replyTo = String(process.env.OUTREACH_EMAIL_REPLY_TO || '').trim();
+  const imapHost = String(process.env.OUTREACH_IMAP_HOST || 'imap.hostinger.com').trim();
   const imapPort = Number(process.env.OUTREACH_IMAP_PORT || 993);
   const imapSecure = parseBoolean(process.env.OUTREACH_IMAP_SECURE, imapPort === 993);
-  const imapUser = process.env.OUTREACH_IMAP_USER || smtpUser;
-  const imapPass = process.env.OUTREACH_IMAP_PASS || smtpPass;
+  const imapUser = String(process.env.OUTREACH_IMAP_USER || smtpUser).trim();
+  const imapPass = String(process.env.OUTREACH_IMAP_PASS || smtpPass).trim();
 
   return {
     fromEmail,
     smtpHost,
     smtpPort,
     smtpSecure,
+    smtpUser,
+    smtpPass,
     replyTo,
     smtpConfigured: Boolean(smtpUser && smtpPass),
     smtpUserConfigured: Boolean(smtpUser),
