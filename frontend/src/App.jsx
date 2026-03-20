@@ -34,33 +34,65 @@ function ThemeToggleButton({ theme, onToggle }) {
   );
 }
 
-function SideNavigation({ currentPage, onNavigate }) {
-  const [isOpen, setIsOpen] = useState(false);
+function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onToggleTheme, onLogout }) {
+  const isDark = theme === 'dark';
 
   const items = [
-    { key: 'dashboard', label: 'Painel', icon: '🏠' },
-    { key: 'kanban', label: 'Kanban', icon: '🗂️' },
-    { key: 'whatsapp', label: 'WhatsApp', icon: '💬' },
-    { key: 'email', label: 'Email', icon: '✉️' },
-    { key: 'crm', label: 'CRM', icon: '📈' },
+    { key: 'dashboard', label: 'Dashboard', icon: '⌂' },
+    { key: 'kanban', label: 'Kanban', icon: '▦' },
+    { key: 'whatsapp', label: 'WhatsApp', icon: '◔' },
+    { key: 'email', label: 'Email', icon: '✉' },
+    { key: 'crm', label: 'Analytics', icon: '◷' },
   ];
 
   return (
     <aside
-      className={`fixed left-4 top-20 z-50 rounded-2xl border border-slate-500 bg-white/95 p-2 shadow-md backdrop-blur transition-all ${
-        isOpen ? 'w-52' : 'w-14'
+      className={`fixed left-4 top-8 z-50 flex h-[calc(100vh-4rem)] flex-col rounded-2xl border p-3 backdrop-blur transition-all duration-300 ${
+        isOpen ? 'w-64' : 'w-20'
+      } ${
+        isDark
+          ? 'border-slate-700 bg-slate-900/95 text-slate-100'
+          : 'border-slate-200 bg-white/95 text-slate-700 shadow-lg'
       }`}
     >
+      <div className="relative flex items-center gap-3 px-1 py-2">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500 text-sm font-bold text-white">
+          KL
+        </span>
+        {isOpen && (
+          <div>
+            <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Keula</p>
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Web developer</p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`absolute -right-5 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm ${
+            isDark
+              ? 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
+              : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+          aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+        >
+          {isOpen ? '‹' : '›'}
+        </button>
+      </div>
+
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="mb-2 flex h-10 w-full items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-lg hover:bg-slate-200"
-        aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+        className={`mt-3 flex h-10 w-full items-center gap-2 rounded-xl border px-3 ${
+          isDark
+            ? 'border-slate-700 bg-slate-800 text-slate-300'
+            : 'border-slate-200 bg-slate-100 text-slate-500'
+        }`}
       >
-        ☰
+        <span className="text-base">⌕</span>
+        {isOpen && <span className="text-sm">Search...</span>}
       </button>
 
-      <nav className="space-y-1">
+      <nav className="mt-4 space-y-2">
         {items.map((item) => {
           const active = item.key === currentPage;
 
@@ -69,9 +101,11 @@ function SideNavigation({ currentPage, onNavigate }) {
               key={item.key}
               type="button"
               onClick={() => onNavigate(item.key)}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
                 active
-                  ? 'bg-teal-500 text-white'
+                  ? 'bg-indigo-500 text-white'
+                  : isDark
+                  ? 'bg-transparent text-slate-300 hover:bg-slate-800'
                   : 'bg-transparent text-slate-700 hover:bg-slate-100'
               }`}
               title={item.label}
@@ -82,6 +116,39 @@ function SideNavigation({ currentPage, onNavigate }) {
           );
         })}
       </nav>
+
+      <div className={`mt-auto space-y-2 border-t pt-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <button
+          type="button"
+          onClick={onLogout}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+            isDark
+              ? 'text-slate-200 hover:bg-slate-800'
+              : 'text-slate-700 hover:bg-slate-100'
+          }`}
+        >
+          <span className="text-base">↪</span>
+          {isOpen && <span>Logout</span>}
+        </button>
+
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-semibold ${
+            isDark
+              ? 'border-slate-700 bg-slate-800 text-slate-200'
+              : 'border-slate-200 bg-slate-100 text-slate-700'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <span>{isDark ? '☀' : '☾'}</span>
+            {isOpen && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
+          </span>
+          <span className={`relative inline-flex h-5 w-10 items-center rounded-full ${isDark ? 'bg-indigo-500' : 'bg-slate-300'}`}>
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isDark ? 'translate-x-5' : 'translate-x-1'}`} />
+          </span>
+        </button>
+      </div>
     </aside>
   );
 }
@@ -93,6 +160,7 @@ function App() {
   const [authenticating, setAuthenticating] = useState(false);
   const [authErrorMessage, setAuthErrorMessage] = useState('');
   const [theme, setTheme] = useState(getInitialTheme);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -117,10 +185,20 @@ function App() {
   }
 
   function withAuthenticatedChrome(content) {
-    return withThemeToggle(
+    return (
       <>
-        <SideNavigation currentPage={currentPage} onNavigate={setCurrentPage} />
-        {content}
+        <SideNavigation
+          currentPage={currentPage}
+          onNavigate={setCurrentPage}
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen((prev) => !prev)}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          onLogout={handleLogout}
+        />
+        <div className={`transition-all duration-300 ${isSidebarOpen ? 'lg:pl-72' : 'lg:pl-28'}`}>
+          {content}
+        </div>
       </>
     );
   }
