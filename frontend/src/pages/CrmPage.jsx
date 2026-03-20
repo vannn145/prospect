@@ -379,7 +379,7 @@ function CrmPage() {
     }
   }
 
-  async function handleGenerateNextActions() {
+  const handleGenerateNextActions = useCallback(async () => {
     if (!selectedCompanyId) {
       return;
     }
@@ -398,7 +398,15 @@ function CrmPage() {
     } finally {
       setLoadingNextActions(false);
     }
-  }
+  }, [selectedCompanyId]);
+
+  useEffect(() => {
+    if (!selectedCompanyId) {
+      return;
+    }
+
+    handleGenerateNextActions();
+  }, [selectedCompanyId, handleGenerateNextActions]);
 
   return (
     <main className="min-h-screen bg-slate-900 pb-10">
