@@ -40,6 +40,13 @@ const EMPTY_STATS = {
   contatadas: 0,
 };
 
+const DEFAULT_COMPANIES_PAGINATION = {
+  page: 1,
+  perPage: 25,
+  total: 0,
+  totalPages: 1,
+};
+
 async function copyText(text) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
@@ -58,6 +65,10 @@ function DashboardPage() {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [companies, setCompanies] = useState([]);
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [companiesPage, setCompaniesPage] = useState(1);
+  const [companiesPerPage, setCompaniesPerPage] = useState(25);
+  const [gotoPageInput, setGotoPageInput] = useState('1');
+  const [companiesPagination, setCompaniesPagination] = useState(DEFAULT_COMPANIES_PAGINATION);
 
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
@@ -93,19 +104,41 @@ function DashboardPage() {
     }
   }, []);
 
-  const loadCompanies = useCallback(async (status) => {
+  const loadCompanies = useCallback(async ({ status, page, perPage } = {}) => {
     setLoadingCompanies(true);
 
     try {
-      const response = await fetchCompanies(status);
-      const nextCompanies = Array.isArray(response) ? response : [];
-      setCompanies(nextCompanies.filter((company) => !company.contacted));
+      const requestedStatus = status || statusFilter;
+      const requestedPage = Number(page || companiesPage);
+      const requestedPerPage = Number(perPage || companiesPerPage);
+
+      const response = await fetchCompanies({
+        status: requestedStatus,
+        page: requestedPage,
+        perPage: requestedPerPage,
+        includeContacted: false,
+      });
+
+      const nextCompanies = Array.isArray(response?.items) ? response.items : [];
+      const totalPages = Math.max(1, Number(response?.totalPages || 1));
+
+      setCompanies(nextCompanies);
+      setCompaniesPagination({
+        page: Number(response?.page || requestedPage),
+        perPage: Number(response?.perPage || requestedPerPage),
+        total: Number(response?.total || 0),
+        totalPages,
+      });
+
+      if (requestedPage > totalPages) {
+        setCompaniesPage(totalPages);
+      }
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
       setLoadingCompanies(false);
     }
-  }, []);
+  }, [statusFilter, companiesPage, companiesPerPage]);
 
   const loadMetaConfig = useCallback(async () => {
     try {
@@ -129,12 +162,16 @@ function DashboardPage() {
   }, [loadStats]);
 
   useEffect(() => {
-    loadCompanies(statusFilter);
-  }, [loadCompanies, statusFilter]);
+    loadCompanies();
+  }, [loadCompanies]);
 
   useEffect(() => {
     loadMetaConfig();
   }, [loadMetaConfig]);
+
+  useEffect(() => {
+    setGotoPageInput(String(companiesPage));
+  }, [companiesPage]);
 
   async function handleSearch(payload) {
     setSearching(true);
@@ -145,10 +182,12 @@ function DashboardPage() {
       const result = await searchCompanies({
         ...payload,
         includeInstagram: true,
+        maxPages: 2,
       });
       setSuccessMessage(`Busca concluída: ${result.saved} empresas salvas.`);
+      setCompaniesPage(1);
 
-      await Promise.all([loadStats(), loadCompanies(statusFilter)]);
+      await Promise.all([loadStats(), loadCompanies({ status: statusFilter, page: 1 })]);
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -164,7 +203,7 @@ function DashboardPage() {
     try {
       const result = await enrichCompanyInstagram(companyId);
       setSuccessMessage(result.message);
-      await loadCompanies(statusFilter);
+      await loadCompanies();
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -180,7 +219,7 @@ function DashboardPage() {
     try {
       const result = await enrichMissingInstagrams(30);
       setSuccessMessage(`Busca de Instagram concluída: ${result.updated} perfil(is) encontrado(s).`);
-      await loadCompanies(statusFilter);
+      await loadCompanies();
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -197,7 +236,7 @@ function DashboardPage() {
       await markCompanyContacted(companyId);
       setSuccessMessage('Empresa marcada como contatada.');
 
-      await Promise.all([loadStats(), loadCompanies(statusFilter)]);
+      await Promise.all([loadStats(), loadCompanies()]);
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -253,8 +292,7 @@ function DashboardPage() {
       await addCompanyToKanban(lead.id);
       await markCompanyContacted(lead.id);
 
-      setCompanies((current) => current.filter((company) => company.id !== lead.id));
-      await loadStats();
+      await Promise.all([loadStats(), loadCompanies()]);
 
       const providerIdMessage = result.messageId ? ` ID: ${result.messageId}` : '';
       setSuccessMessage(`Mensagem enviada via Meta para ${lead.name}.${providerIdMessage} Lead movida para o Kanban.`);
@@ -279,6 +317,37 @@ function DashboardPage() {
     } finally {
       setSendingMetaMessageId(null);
     }
+  }
+
+  function handleStatusFilterChange(nextStatus) {
+    setStatusFilter(nextStatus);
+    setCompaniesPage(1);
+  }
+
+  function handleChangePerPage(nextPerPage) {
+    const normalizedPerPage = Number(nextPerPage) || 25;
+    setCompaniesPerPage(normalizedPerPage);
+    setCompaniesPage(1);
+  }
+
+  function handlePreviousPage() {
+    setCompaniesPage((current) => Math.max(1, current - 1));
+  }
+
+  function handleNextPage() {
+    setCompaniesPage((current) => Math.min(companiesPagination.totalPages, current + 1));
+  }
+
+  function handleGoToPage() {
+    const parsed = Number(gotoPageInput);
+
+    if (!Number.isFinite(parsed)) {
+      setGotoPageInput(String(companiesPage));
+      return;
+    }
+
+    const targetPage = Math.max(1, Math.min(companiesPagination.totalPages, Math.floor(parsed)));
+    setCompaniesPage(targetPage);
   }
 
   return (
@@ -352,7 +421,7 @@ function DashboardPage() {
               <select
                 id="statusFilter"
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
+                onChange={(event) => handleStatusFilterChange(event.target.value)}
                   className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-teal-500"
               >
                 {STATUS_FILTERS.map((option) => (
@@ -369,19 +438,89 @@ function DashboardPage() {
               Carregando contatos...
             </div>
           ) : (
-            <LeadsTable
-              leads={companies}
-              onMarkContacted={handleMarkContacted}
-              onCopyMessage={handleCopyMessage}
-              onSendMetaMessage={handleSendMetaMessage}
-              onAddToKanban={handleAddToKanban}
-              onFindInstagram={handleFindInstagram}
-              contactingId={contactingId}
-              addingKanbanId={addingKanbanId}
-              findingInstagramId={findingInstagramId}
-              sendingMetaMessageId={sendingMetaMessageId}
-              metaMessagingEnabled={metaWhatsAppConfig.configured}
-            />
+            <>
+              <LeadsTable
+                leads={companies}
+                onMarkContacted={handleMarkContacted}
+                onCopyMessage={handleCopyMessage}
+                onSendMetaMessage={handleSendMetaMessage}
+                onAddToKanban={handleAddToKanban}
+                onFindInstagram={handleFindInstagram}
+                contactingId={contactingId}
+                addingKanbanId={addingKanbanId}
+                findingInstagramId={findingInstagramId}
+                sendingMetaMessageId={sendingMetaMessageId}
+                metaMessagingEnabled={metaWhatsAppConfig.configured}
+              />
+
+              <div className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-slate-400">
+                  {companiesPagination.total} contato(s) • Página {companiesPagination.page} de {companiesPagination.totalPages}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor="companiesPerPage" className="text-sm font-medium text-slate-300">
+                    Por página
+                  </label>
+                  <select
+                    id="companiesPerPage"
+                    value={companiesPerPage}
+                    onChange={(event) => handleChangePerPage(event.target.value)}
+                    className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-teal-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handlePreviousPage}
+                    disabled={companiesPage <= 1}
+                    className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Anterior
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextPage}
+                    disabled={companiesPage >= companiesPagination.totalPages}
+                    className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Próxima
+                  </button>
+
+                  <label htmlFor="goToPage" className="text-sm font-medium text-slate-300">
+                    Ir para
+                  </label>
+                  <input
+                    id="goToPage"
+                    type="number"
+                    min={1}
+                    max={companiesPagination.totalPages}
+                    value={gotoPageInput}
+                    onChange={(event) => setGotoPageInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        handleGoToPage();
+                      }
+                    }}
+                    className="w-20 rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-teal-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGoToPage}
+                    disabled={loadingCompanies}
+                    className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Ir
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </section>
       </div>

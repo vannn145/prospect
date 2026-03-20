@@ -8,11 +8,28 @@ const CATEGORY_LABELS = {
   dentist: 'Odonto',
   lawyer: 'Advocacia',
   restaurant: 'Bistrô',
+  bakery: 'Padaria',
+  pharmacy: 'Farmácia',
+  supermarket: 'Mercado',
   gym: 'Academia',
   beauty_salon: 'Studio',
   pet_store: 'Pet',
+  veterinary_care: 'Vet',
+  physiotherapist: 'Fisio',
   real_estate_agency: 'Imóveis',
+  accountant: 'Contábil',
   accounting: 'Contábil',
+  insurance_agency: 'Seguros',
+  car_repair: 'Oficina',
+  hardware_store: 'Materiais',
+  clothing_store: 'Moda',
+  electronics_store: 'Eletrônicos',
+  school: 'Escola',
+  travel_agency: 'Turismo',
+};
+
+const CATEGORY_ALIASES = {
+  accounting: 'accountant',
 };
 
 function slugify(value) {
@@ -45,6 +62,11 @@ function getMockInstagram(index, city, category) {
   }
 
   return `https://www.instagram.com/${slugify(category)}_${slugify(city)}_${index}/`;
+}
+
+function normalizeGooglePlaceType(category) {
+  const normalized = String(category || '').trim().toLowerCase();
+  return CATEGORY_ALIASES[normalized] || normalized;
 }
 
 function generateMockPlaces({ city, category, radius = 5000 }) {
@@ -129,6 +151,7 @@ async function fetchNearbyPage(params) {
 
 async function fetchNearbyPlaces({ latitude, longitude, radius, category, maxPages }) {
   const apiKey = getApiKey();
+  const placeType = normalizeGooglePlaceType(category);
 
   const results = [];
   let nextPageToken = null;
@@ -142,7 +165,7 @@ async function fetchNearbyPlaces({ latitude, longitude, radius, category, maxPag
       : {
           location: `${latitude},${longitude}`,
           radius,
-          type: category,
+          type: placeType,
           key: apiKey,
         };
 

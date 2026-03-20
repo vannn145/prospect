@@ -48,9 +48,23 @@ export async function fetchStats() {
   return request('/stats');
 }
 
-export async function fetchCompanies(status) {
-  const query = status && status !== 'todos' ? `?status=${encodeURIComponent(status)}` : '';
-  return request(`/companies${query}`);
+export async function fetchCompanies({
+  status = 'todos',
+  page = 1,
+  perPage = 25,
+  includeContacted = false,
+} = {}) {
+  const query = new URLSearchParams();
+
+  if (status && status !== 'todos') {
+    query.set('status', String(status));
+  }
+
+  query.set('page', String(Number(page) || 1));
+  query.set('perPage', String(Number(perPage) || 25));
+  query.set('includeContacted', String(Boolean(includeContacted)));
+
+  return request(`/companies?${query.toString()}`);
 }
 
 export async function searchCompanies(payload) {

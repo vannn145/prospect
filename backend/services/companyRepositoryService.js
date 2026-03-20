@@ -90,6 +90,61 @@ async function getCompanies({ status } = {}) {
   return result.rows.map(mapCompany);
 }
 
+async function getCompaniesPaginated({
+  status,
+  contacted,
+  page = 1,
+  perPage = 25,
+} = {}) {
+  const filters = [];
+  const params = [];
+
+  if (status) {
+    params.push(status);
+    filters.push(`status_site = $${params.length}`);
+  }
+
+  if (typeof contacted === 'boolean') {
+    params.push(contacted);
+    filters.push(`contacted = $${params.length}`);
+  }
+
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedPerPage = Math.min(200, Math.max(1, Number(perPage) || 25));
+  const offset = (normalizedPage - 1) * normalizedPerPage;
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+
+  const countSql = `
+    SELECT COUNT(*)::int AS total
+    FROM companies
+    ${whereClause};
+  `;
+
+  const countResult = await query(countSql, params);
+  const total = Number(countResult.rows[0]?.total || 0);
+
+  const sql = `
+    SELECT *, ${POSSIBLE_NO_WEBSITE_SQL} AS possible_no_website
+    FROM companies
+    ${whereClause}
+    ORDER BY contacted ASC, possible_no_website DESC, priority_score DESC, created_at DESC
+    LIMIT $${params.length + 1}
+    OFFSET $${params.length + 2}
+  `;
+
+  const result = await query(sql, [...params, normalizedPerPage, offset]);
+  const items = result.rows.map(mapCompany);
+
+  return {
+    items,
+    page: normalizedPage,
+    perPage: normalizedPerPage,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / normalizedPerPage)),
+  };
+}
+
 async function markAsContacted(id) {
   const sql = `
     UPDATE companies
@@ -199,6 +254,7 @@ async function recalculatePriorityScores() {
 module.exports = {
   upsertCompany,
   getCompanies,
+  getCompaniesPaginated,
   markAsContacted,
   getStats,
   getCompaniesMissingInstagram,

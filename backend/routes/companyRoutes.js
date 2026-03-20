@@ -4,7 +4,7 @@ const {
   collectAndSaveLeads,
 } = require('../services/leadCollectorService');
 const {
-  getCompanies,
+  getCompaniesPaginated,
   markAsContacted,
   getStats,
   getCompanyById,
@@ -463,8 +463,13 @@ router.post('/search', async (req, res, next) => {
 
 router.get('/companies', async (req, res, next) => {
   try {
-    const { status } = req.query;
-    const companies = await getCompanies({ status });
+    const { status, page, perPage, includeContacted } = req.query;
+    const companies = await getCompaniesPaginated({
+      status,
+      page,
+      perPage,
+      contacted: parseBoolean(includeContacted, true) ? undefined : false,
+    });
 
     return res.json(companies);
   } catch (error) {
