@@ -233,13 +233,10 @@ function KanbanPage() {
   return (
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-[1700px] space-y-6 px-4 py-6 md:px-6">
-        <header className="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <header className="rounded-xl border border-slate-700 bg-slate-800 px-6 py-4 shadow-sm">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <img src="/logo-keula.svg" alt="Keula" className="h-14 w-auto" />
-              <p className="mt-2 text-sm text-slate-400">
-                Quadro com arrasta e solta, além de criação e exclusão de colunas.
-              </p>
+              <img src="/logo-keula-clean.svg" alt="Keula" className="h-10 w-auto" />
             </div>
 
             <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[460px]">
