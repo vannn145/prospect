@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 const { query } = require('../database/db');
 const { sendMetaWhatsAppMessage } = require('./metaWhatsAppService');
@@ -1258,6 +1259,144 @@ function normalizeIsoDate(value) {
   return date.toISOString();
 }
 
+function parseJsonFromText(value) {
+  const text = String(value || '').trim();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    const firstBracket = text.indexOf('[');
+    const lastBracket = text.lastIndexOf(']');
+
+    if (firstBracket >= 0 && lastBracket > firstBracket) {
+      const candidate = text.slice(firstBracket, lastBracket + 1);
+
+      try {
+        return JSON.parse(candidate);
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+}
+
+function normalizeAiSuggestions(list, { fallbackChannel, maxItems }) {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+
+  const normalized = [];
+
+  for (const [index, item] of list.entries()) {
+    const title = sanitizeText(item?.title);
+    const reason = sanitizeText(item?.reason);
+
+    if (!title || !reason) {
+      continue;
+    }
+
+    const priorityRaw = String(item?.priority || 'medium').toLowerCase();
+    const priority = TASK_PRIORITIES.includes(priorityRaw) ? priorityRaw : 'medium';
+    const channelRaw = String(item?.channel || fallbackChannel || 'task').toLowerCase();
+    const channel = ['whatsapp', 'email', 'task'].includes(channelRaw) ? channelRaw : (fallbackChannel || 'task');
+
+    normalized.push({
+      key: sanitizeText(item?.key) || `ai_${index + 1}`,
+      title,
+      reason,
+      priority,
+      channel,
+      due_date: normalizeIsoDate(item?.due_date) || normalizeIsoDate(addDaysToNow(priority === 'urgent' ? 0 : 1)),
+      suggested_message: sanitizeText(item?.suggested_message) || '',
+    });
+
+    if (normalized.length >= maxItems) {
+      break;
+    }
+  }
+
+  return normalized;
+}
+
+async function generateExternalAiSuggestions({
+  company,
+  context,
+  stage,
+  preferredChannel,
+  safeLimit,
+  heuristicSuggestions,
+}) {
+  const apiKey = sanitizeText(process.env.CRM_AI_API_KEY);
+
+  if (!apiKey) {
+    return null;
+  }
+
+  const apiUrl = sanitizeText(process.env.CRM_AI_API_URL) || 'https://api.openai.com/v1/chat/completions';
+  const model = sanitizeText(process.env.CRM_AI_MODEL) || 'gpt-4o-mini';
+  const timeoutMs = clamp(parseInteger(process.env.CRM_AI_TIMEOUT_MS, 12000), 2000, 30000);
+
+  const promptPayload = {
+    company: {
+      id: company.id,
+      name: company.name,
+      city: company.city,
+      category: company.category,
+      stage,
+      crm_score: Number(company.crm_score || 0),
+    },
+    context,
+    preferred_channel: preferredChannel,
+    heuristic_reference: heuristicSuggestions,
+    rules: {
+      max_items: safeLimit,
+      priorities: TASK_PRIORITIES,
+      channels: ['whatsapp', 'email', 'task'],
+      response_format: 'json_array',
+      language: 'pt-BR',
+    },
+  };
+
+  const response = await axios.post(
+    apiUrl,
+    {
+      model,
+      temperature: 0.3,
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um assistente de CRM B2B. Responda SOMENTE JSON (array) com sugestões de próximas ações.',
+        },
+        {
+          role: 'user',
+          content: `Gere até ${safeLimit} sugestões objetivas no formato [{"key","title","reason","priority","channel","due_date","suggested_message"}] com prioridade realista.\n\nDados:\n${JSON.stringify(promptPayload)}`,
+        },
+      ],
+    },
+    {
+      timeout: timeoutMs,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  const content = response?.data?.choices?.[0]?.message?.content;
+  const parsed = parseJsonFromText(content);
+
+  return normalizeAiSuggestions(parsed, {
+    fallbackChannel: preferredChannel,
+    maxItems: safeLimit,
+  });
+}
+
 async function suggestCrmNextActions({ companyId, limit = 4 } = {}) {
   const normalizedCompanyId = Number(companyId);
 
@@ -1400,6 +1539,37 @@ async function suggestCrmNextActions({ companyId, limit = 4 } = {}) {
     }
   }
 
+  const heuristicSuggestions = Array.from(uniqueByKey.values()).slice(0, safeLimit);
+  let finalSuggestions = heuristicSuggestions;
+  let engine = 'crm-heuristic-ai-v1';
+
+  try {
+    const externalAiSuggestions = await generateExternalAiSuggestions({
+      company,
+      context: {
+        hours_without_activity: hoursWithoutActivity,
+        inbound_count: Number(engagement.inbound_count || 0),
+        outbound_success_count: Number(engagement.outbound_success_count || 0),
+        open_tasks: Number(taskMetrics.open_tasks || 0),
+        overdue_tasks: overdueTasks.length,
+        timeline_events: timeline.length,
+      },
+      stage,
+      preferredChannel,
+      safeLimit,
+      heuristicSuggestions,
+    });
+
+    if (Array.isArray(externalAiSuggestions) && externalAiSuggestions.length > 0) {
+      finalSuggestions = externalAiSuggestions;
+      engine = 'crm-external-ai-v1';
+    }
+  } catch (error) {
+    console.warn('Falha ao gerar sugestões com IA externa. Aplicando fallback heurístico.', {
+      message: error?.message,
+    });
+  }
+
   return {
     company: {
       id: company.id,
@@ -1418,9 +1588,9 @@ async function suggestCrmNextActions({ companyId, limit = 4 } = {}) {
       overdue_tasks: overdueTasks.length,
       timeline_events: timeline.length,
     },
-    suggestions: Array.from(uniqueByKey.values()).slice(0, safeLimit),
+    suggestions: finalSuggestions,
     generated_at: new Date().toISOString(),
-    engine: 'crm-heuristic-ai-v1',
+    engine,
   };
 }
 
