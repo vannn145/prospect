@@ -368,6 +368,26 @@ function DashboardPage() {
     setErrorMessage('');
   }
 
+  function handleClearCityScope() {
+    setSearchScope((current) => ({
+      ...current,
+      city: '',
+    }));
+    setCompaniesPage(1);
+    setSuccessMessage('Filtro de cidade removido.');
+    setErrorMessage('');
+  }
+
+  function handleClearCategoryScope() {
+    setSearchScope((current) => ({
+      ...current,
+      category: '',
+    }));
+    setCompaniesPage(1);
+    setSuccessMessage('Filtro de categoria removido.');
+    setErrorMessage('');
+  }
+
   return (
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6">
@@ -426,11 +446,32 @@ function DashboardPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               {hasSearchScope && (
-                <div className="rounded-lg border border-teal-700/50 bg-teal-900/30 px-3 py-2 text-sm text-teal-200">
-                  Filtro ativo:
-                  {searchScope.city ? ` ${searchScope.city}` : ''}
-                  {searchScope.city && searchScope.category ? ' • ' : ''}
-                  {searchScope.category ? getCategoryLabel(searchScope.category) : ''}
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-teal-700/50 bg-teal-900/30 px-3 py-2 text-sm text-teal-200">
+                  <span className="font-semibold text-teal-100">Filtro ativo:</span>
+
+                  {searchScope.city && (
+                    <button
+                      type="button"
+                      onClick={handleClearCityScope}
+                      className="inline-flex items-center gap-1 rounded-full border border-teal-600 bg-teal-800/40 px-2 py-0.5 text-xs font-semibold text-teal-100 hover:bg-teal-700/50"
+                      title="Remover filtro de cidade"
+                    >
+                      {searchScope.city}
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  )}
+
+                  {searchScope.category && (
+                    <button
+                      type="button"
+                      onClick={handleClearCategoryScope}
+                      className="inline-flex items-center gap-1 rounded-full border border-teal-600 bg-teal-800/40 px-2 py-0.5 text-xs font-semibold text-teal-100 hover:bg-teal-700/50"
+                      title="Remover filtro de categoria"
+                    >
+                      {getCategoryLabel(searchScope.category)}
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  )}
                 </div>
               )}
 
