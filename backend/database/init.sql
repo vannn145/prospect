@@ -94,12 +94,17 @@ CREATE TABLE IF NOT EXISTS whatsapp_contacts (
   profile_name TEXT,
   phone_display TEXT,
   company_id BIGINT REFERENCES companies(id) ON DELETE SET NULL,
+  contact_tag TEXT,
+  contact_tag_updated_at TIMESTAMPTZ,
   unread_count INTEGER NOT NULL DEFAULT 0,
   last_message_at TIMESTAMPTZ,
   last_message_preview TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE whatsapp_contacts ADD COLUMN IF NOT EXISTS contact_tag TEXT;
+ALTER TABLE whatsapp_contacts ADD COLUMN IF NOT EXISTS contact_tag_updated_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_contacts_last_message_at ON whatsapp_contacts(last_message_at DESC);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_contacts_company_id ON whatsapp_contacts(company_id);

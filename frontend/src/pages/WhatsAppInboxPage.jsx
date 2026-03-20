@@ -5,7 +5,52 @@ import {
   fetchInboxMessages,
   markInboxConversationRead,
   sendInboxReply,
+  updateInboxConversationTag,
 } from '../api/client';
+
+const CONTACT_TAG_OPTIONS = [
+  { value: '', label: 'Sem tag' },
+  { value: 'novo_contato', label: 'Novo contato' },
+  { value: 'prospeccao_sem_resposta', label: 'Prospecção sem resposta' },
+  { value: 'primeiro_contato_sem_resposta', label: '1º contato sem resposta' },
+  { value: 'segundo_contato_sem_resposta', label: '2º contato sem resposta' },
+  { value: 'aguardando_resposta', label: 'Aguardando resposta' },
+  { value: 'respondeu', label: 'Respondeu' },
+  { value: 'interessado', label: 'Interessado' },
+  { value: 'sem_interesse', label: 'Sem interesse' },
+  { value: 'fechado', label: 'Fechado' },
+];
+
+const CONTACT_TAG_LABELS = Object.fromEntries(
+  CONTACT_TAG_OPTIONS.filter((option) => option.value).map((option) => [option.value, option.label])
+);
+
+function getContactTagLabel(tag) {
+  return CONTACT_TAG_LABELS[tag] || 'Sem tag';
+}
+
+function getContactTagBadgeClass(tag) {
+  switch (tag) {
+    case 'novo_contato':
+      return 'border-sky-200 bg-sky-100 text-sky-700';
+    case 'prospeccao_sem_resposta':
+    case 'primeiro_contato_sem_resposta':
+    case 'segundo_contato_sem_resposta':
+      return 'border-amber-200 bg-amber-100 text-amber-700';
+    case 'aguardando_resposta':
+      return 'border-violet-200 bg-violet-100 text-violet-700';
+    case 'respondeu':
+      return 'border-cyan-200 bg-cyan-100 text-cyan-700';
+    case 'interessado':
+      return 'border-emerald-200 bg-emerald-100 text-emerald-700';
+    case 'sem_interesse':
+      return 'border-rose-200 bg-rose-100 text-rose-700';
+    case 'fechado':
+      return 'border-green-200 bg-green-100 text-green-700';
+    default:
+      return 'border-slate-200 bg-slate-100 text-slate-600';
+  }
+}
 
 function formatConversationTime(value) {
   if (!value) {
@@ -90,6 +135,7 @@ function WhatsAppInboxPage() {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
+  const [savingTag, setSavingTag] = useState(false);
 
   const [searchInput, setSearchInput] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
@@ -449,6 +495,33 @@ function WhatsAppInboxPage() {
     }
   }
 
+  async function handleUpdateConversationTag(nextTag) {
+    if (!selectedWaId) {
+      return;
+    }
+
+    setSavingTag(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const result = await updateInboxConversationTag(selectedWaId, nextTag);
+      const updatedConversation = result?.conversation || null;
+
+      setConversations((current) => current.map((conversation) => (
+        conversation.wa_id === selectedWaId && updatedConversation
+          ? updatedConversation
+          : conversation
+      )));
+
+      setSuccessMessage('Tag do contato atualizada com sucesso.');
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setSavingTag(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-[1700px] space-y-6 px-4 py-6 md:px-6">
@@ -612,6 +685,12 @@ function WhatsAppInboxPage() {
                               </span>
                             )}
                           </span>
+
+                          {conversation.contact_tag && (
+                            <span className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getContactTagBadgeClass(conversation.contact_tag)}`}>
+                              {getContactTagLabel(conversation.contact_tag)}
+                            </span>
+                          )}
                         </span>
                       </button>
                     );
@@ -624,13 +703,40 @@ function WhatsAppInboxPage() {
               {selectedConversation ? (
                 <>
                   <div className="border-b border-slate-700 bg-slate-900/70 px-4 py-3">
-                    <p className="text-sm font-semibold text-slate-100">{getDisplayName(selectedConversation)}</p>
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      {selectedConversation.phone_display}
-                      {selectedConversation.company?.name
-                        ? ` • Empresa vinculada: ${selectedConversation.company.name}`
-                        : ''}
-                    </p>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-100">{getDisplayName(selectedConversation)}</p>
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {selectedConversation.phone_display}
+                          {selectedConversation.company?.name
+                            ? ` • Empresa vinculada: ${selectedConversation.company.name}`
+                            : ''}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {selectedConversation.contact_tag && (
+                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getContactTagBadgeClass(selectedConversation.contact_tag)}`}>
+                            {getContactTagLabel(selectedConversation.contact_tag)}
+                          </span>
+                        )}
+
+                        <select
+                          value={selectedConversation.contact_tag || ''}
+                          onChange={(event) => handleUpdateConversationTag(event.target.value)}
+                          disabled={savingTag}
+                          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-100 focus:border-teal-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-700"
+                        >
+                          {CONTACT_TAG_OPTIONS.map((option) => (
+                            <option key={option.value || 'empty'} value={option.value}>
+                              {savingTag && option.value === (selectedConversation.contact_tag || '')
+                                ? `${option.label}...`
+                                : option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex-1 overflow-y-auto bg-slate-800 px-4 py-4">

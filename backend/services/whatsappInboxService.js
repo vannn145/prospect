@@ -13,6 +13,18 @@ const DEFAULT_OPEN_WINDOW_TEXT_TEMPLATE = [
   'Se quiser posso te mostrar um exemplo de site para o seu segmento.',
 ].join('\n');
 
+const ALLOWED_CONTACT_TAGS = new Set([
+  'novo_contato',
+  'prospeccao_sem_resposta',
+  'primeiro_contato_sem_resposta',
+  'segundo_contato_sem_resposta',
+  'aguardando_resposta',
+  'respondeu',
+  'interessado',
+  'sem_interesse',
+  'fechado',
+]);
+
 function parseBoolean(value, fallback = false) {
   if (value == null || value === '') {
     return fallback;
@@ -184,6 +196,8 @@ function mapConversation(row) {
     profile_name: row.profile_name,
     display_name: displayName,
     phone_display: row.phone_display || row.wa_id,
+    contact_tag: sanitizeText(row.contact_tag),
+    contact_tag_updated_at: row.contact_tag_updated_at || null,
     unread_count: Number(row.unread_count || 0),
     last_message_at: row.last_message_at,
     last_message_preview: row.last_message_preview,
@@ -198,6 +212,20 @@ function mapConversation(row) {
         }
       : null,
   };
+}
+
+function normalizeContactTag(tag) {
+  const normalized = sanitizeText(tag);
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (!ALLOWED_CONTACT_TAGS.has(normalized)) {
+    throw buildHttpError('Tag de contato inválida.', 400);
+  }
+
+  return normalized;
 }
 
 function mapMessage(row) {
@@ -472,6 +500,8 @@ async function fetchConversationByWaId(waId) {
         wc.wa_id,
         wc.profile_name,
         wc.phone_display,
+        wc.contact_tag,
+        wc.contact_tag_updated_at,
         wc.unread_count,
         wc.last_message_at,
         wc.last_message_preview,
@@ -628,6 +658,8 @@ async function listInboxConversations({ search } = {}) {
         wc.wa_id,
         wc.profile_name,
         wc.phone_display,
+        wc.contact_tag,
+        wc.contact_tag_updated_at,
         wc.unread_count,
         wc.last_message_at,
         wc.last_message_preview,
@@ -703,6 +735,34 @@ async function markConversationAsRead({ waId }) {
   );
 
   return Boolean(result.rows[0]);
+}
+
+async function updateConversationTag({ waId, tag }) {
+  const normalizedWaId = normalizeWaId(waId);
+
+  if (!normalizedWaId) {
+    throw buildHttpError('waId inválido.', 400);
+  }
+
+  const normalizedTag = normalizeContactTag(tag);
+
+  const result = await query(
+    `
+      UPDATE whatsapp_contacts
+      SET contact_tag = $2,
+          contact_tag_updated_at = CASE WHEN $2 IS NULL THEN NULL ELSE NOW() END,
+          updated_at = NOW()
+      WHERE wa_id = $1
+      RETURNING id
+    `,
+    [normalizedWaId, normalizedTag]
+  );
+
+  if (!result.rows[0]) {
+    return null;
+  }
+
+  return fetchConversationByWaId(normalizedWaId);
 }
 
 async function sendConversationReply({ waId, message }) {
@@ -910,6 +970,7 @@ module.exports = {
   listInboxConversations,
   getInboxConversationMessages,
   markConversationAsRead,
+  updateConversationTag,
   sendConversationReply,
   saveOutboundToInbox,
   processMetaWebhookPayload,

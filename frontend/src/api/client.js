@@ -167,6 +167,14 @@ export async function markInboxConversationRead(waId) {
   });
 }
 
+export async function updateInboxConversationTag(waId, tag) {
+  const normalizedWaId = encodeURIComponent(String(waId || '').trim());
+  return request(`/whatsapp/inbox/conversations/${normalizedWaId}/tag`, {
+    method: 'PATCH',
+    body: JSON.stringify({ tag: tag || null }),
+  });
+}
+
 export async function sendInboxReply(waId, payload = {}) {
   const normalizedWaId = encodeURIComponent(String(waId || '').trim());
   return request(`/whatsapp/inbox/conversations/${normalizedWaId}/reply`, {

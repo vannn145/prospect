@@ -4,6 +4,7 @@ const {
   listInboxConversations,
   getInboxConversationMessages,
   markConversationAsRead,
+  updateConversationTag,
   sendConversationReply,
 } = require('../services/whatsappInboxService');
 
@@ -55,6 +56,28 @@ router.patch('/conversations/:waId/read', async (req, res, next) => {
 
     return res.json({
       message: 'Conversa marcada como lida.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.patch('/conversations/:waId/tag', async (req, res, next) => {
+  try {
+    const updatedConversation = await updateConversationTag({
+      waId: req.params.waId,
+      tag: req.body?.tag,
+    });
+
+    if (!updatedConversation) {
+      return res.status(404).json({
+        error: 'Conversa não encontrada.',
+      });
+    }
+
+    return res.json({
+      message: 'Tag da conversa atualizada com sucesso.',
+      conversation: updatedConversation,
     });
   } catch (error) {
     return next(error);
