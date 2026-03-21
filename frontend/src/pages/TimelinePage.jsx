@@ -87,11 +87,57 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
   const [error, setError] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
   const [activeActionTab, setActiveActionTab] = useState('note');
+  const [selectedStage, setSelectedStage] = useState('entrada');
+  const [actionFeedback, setActionFeedback] = useState('');
 
   const currentStage = useMemo(
     () => normalizeStage(companyData?.stage, companyData?.stage_label),
     [companyData?.stage, companyData?.stage_label],
   );
+
+  useEffect(() => {
+    setSelectedStage(currentStage);
+  }, [currentStage]);
+
+  function handleSaveAction() {
+    const trimmed = noteDraft.trim();
+
+    if (!trimmed) {
+      setActionFeedback('Escreva uma observação antes de salvar.');
+      return;
+    }
+
+    const actionLabels = {
+      note: 'Nota registrada',
+      email: 'E-mail registrado',
+      call: 'Ligação registrada',
+      proposal: 'Proposta registrada',
+      meeting: 'Reunião registrada',
+      visit: 'Visita registrada',
+    };
+
+    const actionChannels = {
+      note: 'note',
+      email: 'email',
+      call: 'call',
+      proposal: 'proposal',
+      meeting: 'meeting',
+      visit: 'visit',
+    };
+
+    const newEvent = {
+      id: `local-${Date.now()}`,
+      title: actionLabels[activeActionTab] || 'Ação registrada',
+      channel: actionChannels[activeActionTab] || 'note',
+      created_at: new Date().toISOString(),
+      description: trimmed,
+      details: '',
+    };
+
+    setTimeline((current) => [newEvent, ...current]);
+    setNoteDraft('');
+    setActionFeedback('Ação registrada no histórico.');
+  }
 
   useEffect(() => {
     async function load() {
@@ -138,19 +184,33 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 xl:grid-cols-5">
-          {STAGE_FLOW.map((stage) => {
-            const isActive = stage.key === currentStage;
+          {STAGE_FLOW.map((stage, index) => {
+            const isActive = stage.key === selectedStage;
+            const isFirst = index === 0;
+            const isLast = index === STAGE_FLOW.length - 1;
+
+            let clipPath = 'polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%)';
+            if (isFirst) {
+              clipPath = 'polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%)';
+            }
+            if (isLast) {
+              clipPath = 'polygon(12px 0, 100% 0, 100% 100%, 12px 100%, 0 50%)';
+            }
+
             return (
-              <div
+              <button
                 key={stage.key}
+                type="button"
+                onClick={() => setSelectedStage(stage.key)}
+                style={{ clipPath }}
                 className={`rounded-lg border px-3 py-2 text-center text-sm font-semibold ${
                   isActive
                     ? 'border-teal-500 bg-teal-500/10 text-teal-700'
-                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
                 }`}
               >
                 {stage.label}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -191,13 +251,18 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
               onChange={(event) => setNoteDraft(event.target.value)}
               rows={3}
               placeholder="O que foi feito e qual o próximo passo?"
-              className="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
+              className="mt-3 w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
             />
+
+            {actionFeedback && (
+              <p className="mt-2 text-xs font-semibold text-teal-700">{actionFeedback}</p>
+            )}
 
             <div className="mt-3 flex justify-end">
               <button
                 type="button"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                onClick={handleSaveAction}
+                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
               >
                 Salvar e marcar como finalizada
               </button>
