@@ -425,7 +425,7 @@ function CrmPage({ onViewTimeline }) {
               <button
                 type="button"
                 onClick={() => setIsNotificationsOpen((current) => !current)}
-                className="flex items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-slate-800"
+                className="flex items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-teal-500/10"
                 aria-expanded={isNotificationsOpen}
                 aria-label="Alternar notificações da IA"
               >
