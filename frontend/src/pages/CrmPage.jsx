@@ -657,7 +657,7 @@ function CrmPage({ onViewTimeline }) {
                           <button
                             type="button"
                             onClick={() => {
-                              onViewTimeline?.(item.company.id, item.company.name || 'Empresa');
+                              onViewTimeline?.(item.company.id, item.company.name || 'Empresa', item);
                             }}
                             className="rounded-md bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-600"
                           >

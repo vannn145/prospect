@@ -202,7 +202,16 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
         >
           <span className="flex items-center gap-2">
             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-current text-xs">
-              {isDark ? '☀' : '☾'}
+              {isDark ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-3.5 w-3.5">
+                  <circle cx="12" cy="12" r="4" strokeWidth="1.8" />
+                  <path strokeWidth="1.8" strokeLinecap="round" d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-3.5 w-3.5">
+                  <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 1 0 10.5 10.5Z" />
+                </svg>
+              )}
             </span>
             {isOpen && <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>}
           </span>
@@ -219,6 +228,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [timelineCompanyId, setTimelineCompanyId] = useState(null);
   const [timelineCompanyName, setTimelineCompanyName] = useState('');
+  const [timelineCompanyData, setTimelineCompanyData] = useState(null);
   const [authStatus, setAuthStatus] = useState('checking');
   const [authUser, setAuthUser] = useState(() => getAuthUser());
   const [authenticating, setAuthenticating] = useState(false);
@@ -354,9 +364,11 @@ function App() {
       <TimelinePage
         companyId={timelineCompanyId}
         companyName={timelineCompanyName}
+        companyData={timelineCompanyData}
         onBack={() => {
           setTimelineCompanyId(null);
           setTimelineCompanyName('');
+          setTimelineCompanyData(null);
         }}
       />
     );
@@ -377,9 +389,10 @@ function App() {
   if (currentPage === 'crm') {
     return withAuthenticatedChrome(
       <CrmPage
-        onViewTimeline={(companyId, companyName) => {
+        onViewTimeline={(companyId, companyName, companyData) => {
           setTimelineCompanyId(companyId);
           setTimelineCompanyName(companyName);
+          setTimelineCompanyData(companyData || null);
         }}
       />
     );
