@@ -752,9 +752,9 @@ function WhatsAppInboxPage() {
                     className="flex-1 overflow-y-auto px-4 py-4"
                     style={{
                       backgroundColor: '#efeae2',
-                      backgroundImage: 'radial-gradient(circle at 25px 25px, rgba(255,255,255,0.28) 2px, transparent 0), radial-gradient(circle at 75px 75px, rgba(0,0,0,0.04) 2px, transparent 0), linear-gradient(135deg, rgba(255,255,255,0.08) 25%, transparent 25%), linear-gradient(225deg, rgba(255,255,255,0.08) 25%, transparent 25%), linear-gradient(315deg, rgba(255,255,255,0.08) 25%, transparent 25%), linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%)',
-                      backgroundPosition: '0 0, 0 0, 12px 0, 12px 0, 0 0, 0 0',
-                      backgroundSize: '100px 100px, 100px 100px, 24px 24px, 24px 24px, 24px 24px, 24px 24px',
+                      backgroundImage: 'radial-gradient(circle at 18px 18px, rgba(255,255,255,0.28) 1.8px, transparent 0), radial-gradient(circle at 72px 62px, rgba(0,0,0,0.045) 1.6px, transparent 0), radial-gradient(circle at 45px 82px, rgba(255,255,255,0.2) 1.6px, transparent 0), linear-gradient(135deg, rgba(255,255,255,0.06) 25%, transparent 25%), linear-gradient(225deg, rgba(255,255,255,0.06) 25%, transparent 25%), linear-gradient(315deg, rgba(255,255,255,0.06) 25%, transparent 25%), linear-gradient(45deg, rgba(255,255,255,0.06) 25%, transparent 25%)',
+                      backgroundPosition: '0 0, 0 0, 0 0, 13px 0, 13px 0, 0 0, 0 0',
+                      backgroundSize: '96px 96px, 96px 96px, 96px 96px, 26px 26px, 26px 26px, 26px 26px, 26px 26px',
                     }}
                   >
                     {loadingMessages ? (
@@ -769,12 +769,19 @@ function WhatsAppInboxPage() {
                           return (
                             <div key={message.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                               <article
-                                className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                                className={`relative max-w-[82%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                                   isOutbound
                                     ? 'bg-[#d9fdd3] text-slate-800'
                                     : 'bg-white text-slate-800'
                                 }`}
                               >
+                                <span
+                                  className={`absolute top-3 h-2.5 w-2.5 rotate-45 ${
+                                    isOutbound
+                                      ? 'right-[-4px] bg-[#d9fdd3]'
+                                      : 'left-[-4px] bg-white'
+                                  }`}
+                                />
                                 <p className="whitespace-pre-wrap break-words">{message.text_body || '[mensagem]'}</p>
                                 <p
                                   className={`mt-1 text-[11px] ${
@@ -805,9 +812,15 @@ function WhatsAppInboxPage() {
                       <button
                         type="submit"
                         disabled={sendingReply || !replyText.trim()}
-                        className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-600"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-teal-500 text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
-                        {sendingReply ? 'Enviando...' : 'Enviar'}
+                        {sendingReply ? (
+                          <span className="text-[11px] font-semibold">...</span>
+                        ) : (
+                          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+                            <path d="M3.4 20.4L21 12 3.4 3.6v6.4l12 2-12 2v6.4z" />
+                          </svg>
+                        )}
                       </button>
                     </div>
                   </form>
