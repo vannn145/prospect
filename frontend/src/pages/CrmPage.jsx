@@ -113,6 +113,7 @@ function CrmPage({ onViewTimeline }) {
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
   const [selectedCompanyName, setSelectedCompanyName] = useState('');
   const [expandedNotificationId, setExpandedNotificationId] = useState(null);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const [stageFilter, setStageFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -436,10 +437,15 @@ function CrmPage({ onViewTimeline }) {
           <StatCard title="Score médio" value={loadingOverview ? '...' : Number(totals.avg_crm_score || 0)} />
         </section>
 
-        {aiNotifications.length > 0 && (
-          <section className="rounded-xl border border-teal-700/60 bg-slate-900 p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+        <section className="rounded-xl border border-teal-700/60 bg-slate-900 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setIsNotificationsOpen((current) => !current)}
+                className="flex items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-slate-800"
+                aria-expanded={isNotificationsOpen}
+                aria-label="Alternar notificações da IA"
+              >
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-teal-600/60 bg-slate-800 text-teal-300">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4">
                     <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M10.34 3.94a1.5 1.5 0 0 1 3.32 0 7.5 7.5 0 0 1 5.84 7.3v4.04l1.2 1.8a1 1 0 0 1-.83 1.55H4.13a1 1 0 0 1-.83-1.55l1.2-1.8v-4.04a7.5 7.5 0 0 1 5.84-7.3Z" />
@@ -447,7 +453,10 @@ function CrmPage({ onViewTimeline }) {
                   </svg>
                 </span>
                 <h2 className="text-base font-semibold text-slate-100">Notificações da IA</h2>
-              </div>
+                <span className="rounded-full border border-teal-600/60 bg-slate-800 px-2.5 py-1 text-xs font-semibold text-teal-200">
+                  {aiNotifications.length}
+                </span>
+              </button>
 
               <div className="flex items-center gap-2">
                 <button
@@ -458,13 +467,16 @@ function CrmPage({ onViewTimeline }) {
                 >
                   {loadingAiNotifications ? 'Gerando...' : 'Gerar agora'}
                 </button>
-                <span className="rounded-full border border-teal-600/60 bg-slate-800 px-2.5 py-1 text-xs font-semibold text-teal-200">
-                {aiNotifications.length}
-                </span>
               </div>
             </div>
 
-            <div className="space-y-2">
+            {isNotificationsOpen && (
+              <div className="mt-3 space-y-2">
+                {aiNotifications.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-slate-600 bg-slate-800 p-4 text-sm text-slate-400">
+                    Sem notificações da IA no momento.
+                  </div>
+                )}
               {aiNotifications.map((notification) => {
                 const isExpanded = expandedNotificationId === notification.id;
                 return (
@@ -485,7 +497,17 @@ function CrmPage({ onViewTimeline }) {
                           <span className="text-[11px] text-slate-400">
                             {formatDateTime(notification.createdAt)}
                           </span>
-                          <span className="text-[10px] text-teal-300">{isExpanded ? '▼' : '▶'}</span>
+                          <span className="text-teal-300">
+                            {isExpanded ? (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-3.5 w-3.5">
+                                <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                              </svg>
+                            ) : (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-3.5 w-3.5">
+                                <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="m9 6 6 6-6 6" />
+                              </svg>
+                            )}
+                          </span>
                         </div>
                       </div>
                     </button>
@@ -540,9 +562,9 @@ function CrmPage({ onViewTimeline }) {
                   </article>
                 );
               })}
-            </div>
+              </div>
+            )}
           </section>
-        )}
 
         <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

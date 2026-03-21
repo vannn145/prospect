@@ -29,9 +29,19 @@ function ThemeToggleButton({ theme, onToggle }) {
     <button
       type="button"
       onClick={onToggle}
-      className="fixed right-4 top-4 z-50 rounded-full border border-slate-500 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-800 shadow-sm backdrop-blur hover:bg-white"
+      className="fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-full border border-slate-500 bg-white/90 px-4 py-2 text-xs font-semibold text-slate-800 shadow-sm backdrop-blur hover:bg-white"
     >
-      {isDark ? '☀️ Modo claro' : '🌙 Modo escuro'}
+      {isDark ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4">
+          <circle cx="12" cy="12" r="4" strokeWidth="1.8" />
+          <path strokeWidth="1.8" strokeLinecap="round" d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4">
+          <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 1 0 10.5 10.5Z" />
+        </svg>
+      )}
+      <span>{isDark ? 'Modo claro' : 'Modo escuro'}</span>
     </button>
   );
 }
