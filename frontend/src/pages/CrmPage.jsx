@@ -330,6 +330,7 @@ function CrmPage({ onViewTimeline }) {
 
     setLoadingAiNotifications(true);
     setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const response = await fetchCrmNextActions(selectedCompanyId, 5);
@@ -337,7 +338,6 @@ function CrmPage({ onViewTimeline }) {
       const engine = String(response?.engine || 'crm-engine');
 
       if (suggestions.length === 0) {
-        setSuccessMessage('IA sem novas notificações para esta empresa agora.');
         return;
       }
 
@@ -353,23 +353,6 @@ function CrmPage({ onViewTimeline }) {
       };
 
       setAiNotifications((current) => [notification, ...current].slice(0, 15));
-      setSuccessMessage(`IA gerou ${suggestions.length} notificação(ões) para ${companyName}.`);
-
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        if (window.Notification.permission === 'granted') {
-          new window.Notification(`CRM IA • ${companyName}`, {
-            body: suggestions[0]?.title || 'Nova recomendação de próxima ação.',
-          });
-        } else if (window.Notification.permission === 'default') {
-          window.Notification.requestPermission().then((permission) => {
-            if (permission === 'granted') {
-              new window.Notification(`CRM IA • ${companyName}`, {
-                body: suggestions[0]?.title || 'Nova recomendação de próxima ação.',
-              });
-            }
-          }).catch(() => null);
-        }
-      }
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
