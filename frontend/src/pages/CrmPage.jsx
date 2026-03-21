@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   createCrmTask,
-  fetchCrmCompanyTimeline,
   fetchCrmNextActions,
   fetchCrmOverview,
   fetchCrmPipeline,
@@ -105,33 +104,10 @@ function getTaskStatusLabel(status) {
   return 'Pendente';
 }
 
-function getChannelLabel(channel) {
-  const normalized = String(channel || '').toLowerCase();
-
-  if (normalized === 'whatsapp') {
-    return 'WhatsApp';
-  }
-
-  if (normalized === 'email') {
-    return 'E-mail';
-  }
-
-  if (normalized === 'task') {
-    return 'Tarefa';
-  }
-
-  if (normalized === 'kanban') {
-    return 'Kanban';
-  }
-
-  return 'Sistema';
-}
-
 function CrmPage({ onViewTimeline }) {
   const [overview, setOverview] = useState(null);
   const [pipelineItems, setPipelineItems] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [timeline, setTimeline] = useState([]);
   const [aiNotifications, setAiNotifications] = useState([]);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
@@ -145,7 +121,6 @@ function CrmPage({ onViewTimeline }) {
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingPipeline, setLoadingPipeline] = useState(true);
   const [loadingTasks, setLoadingTasks] = useState(true);
-  const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [loadingAiNotifications, setLoadingAiNotifications] = useState(false);
   const [savingTaskId, setSavingTaskId] = useState(null);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -236,24 +211,6 @@ function CrmPage({ onViewTimeline }) {
     }
   }, [searchValue, stageFilter]);
 
-  const loadTimeline = useCallback(async (companyId) => {
-    if (!companyId) {
-      setTimeline([]);
-      return;
-    }
-
-    setLoadingTimeline(true);
-
-    try {
-      const response = await fetchCrmCompanyTimeline(companyId, 120);
-      setTimeline(Array.isArray(response?.timeline) ? response.timeline : []);
-    } catch (error) {
-      setErrorMessage(error.message);
-    } finally {
-      setLoadingTimeline(false);
-    }
-  }, []);
-
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
@@ -262,14 +219,6 @@ function CrmPage({ onViewTimeline }) {
     loadPipeline();
     loadTasks();
   }, [loadPipeline, loadTasks]);
-
-  useEffect(() => {
-    if (!selectedCompanyId) {
-      return;
-    }
-
-    loadTimeline(selectedCompanyId);
-  }, [loadTimeline, selectedCompanyId]);
 
   const tasksSummary = useMemo(() => overview?.tasks || {}, [overview]);
   const totals = useMemo(() => overview?.totals || {}, [overview]);
@@ -283,10 +232,6 @@ function CrmPage({ onViewTimeline }) {
       loadPipeline({ silent: true }),
       loadTasks({ silent: true }),
     ]);
-
-    if (selectedCompanyId) {
-      await loadTimeline(selectedCompanyId);
-    }
 
     setSuccessMessage('CRM atualizado com sucesso.');
   }
@@ -407,7 +352,7 @@ function CrmPage({ onViewTimeline }) {
       };
 
       setAiNotifications((current) => [notification, ...current].slice(0, 15));
-      setSuccessMessage(`🔔 IA gerou ${suggestions.length} notificação(ões) para ${companyName}.`);
+      setSuccessMessage(`IA gerou ${suggestions.length} notificação(ões) para ${companyName}.`);
 
       if (typeof window !== 'undefined' && 'Notification' in window) {
         if (window.Notification.permission === 'granted') {
@@ -492,19 +437,38 @@ function CrmPage({ onViewTimeline }) {
         </section>
 
         {aiNotifications.length > 0 && (
-          <section className="rounded-xl border border-amber-700 bg-amber-950 p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h2 className="text-base font-semibold text-amber-100">🤖 Notificações IA</h2>
-              <span className="rounded-full bg-amber-900 px-2.5 py-1 text-xs font-semibold text-amber-100">
+          <section className="rounded-xl border border-teal-700/60 bg-slate-900 p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-teal-600/60 bg-slate-800 text-teal-300">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-4 w-4">
+                    <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M10.34 3.94a1.5 1.5 0 0 1 3.32 0 7.5 7.5 0 0 1 5.84 7.3v4.04l1.2 1.8a1 1 0 0 1-.83 1.55H4.13a1 1 0 0 1-.83-1.55l1.2-1.8v-4.04a7.5 7.5 0 0 1 5.84-7.3Z" />
+                    <path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M9.5 18.5a2.5 2.5 0 0 0 5 0" />
+                  </svg>
+                </span>
+                <h2 className="text-base font-semibold text-slate-100">Notificações da IA</h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerateNextActions}
+                  disabled={!selectedCompanyId || loadingAiNotifications}
+                  className="rounded-lg border border-teal-600/60 bg-teal-500/10 px-3 py-1.5 text-xs font-semibold text-teal-200 hover:bg-teal-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingAiNotifications ? 'Gerando...' : 'Gerar agora'}
+                </button>
+                <span className="rounded-full border border-teal-600/60 bg-slate-800 px-2.5 py-1 text-xs font-semibold text-teal-200">
                 {aiNotifications.length}
-              </span>
+                </span>
+              </div>
             </div>
 
             <div className="space-y-2">
               {aiNotifications.map((notification) => {
                 const isExpanded = expandedNotificationId === notification.id;
                 return (
-                  <article key={notification.id} className="rounded-lg border border-amber-800 bg-amber-900/40 transition hover:border-amber-700">
+                  <article key={notification.id} className="rounded-lg border border-slate-700 bg-slate-800/70 transition hover:border-teal-600/50">
                     <button
                       type="button"
                       onClick={() => setExpandedNotificationId(isExpanded ? null : notification.id)}
@@ -512,32 +476,32 @@ function CrmPage({ onViewTimeline }) {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-amber-100">{notification.companyName}</p>
-                          <p className="mt-1 text-xs text-amber-200">
+                          <p className="text-sm font-semibold text-slate-100">{notification.companyName}</p>
+                          <p className="mt-1 text-xs text-slate-300">
                             {notification.suggestions[0]?.title || 'Nova recomendação de ação.'}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[11px] text-amber-300">
+                          <span className="text-[11px] text-slate-400">
                             {formatDateTime(notification.createdAt)}
                           </span>
-                          <span className="text-[10px] text-amber-300">{isExpanded ? '▼' : '▶'}</span>
+                          <span className="text-[10px] text-teal-300">{isExpanded ? '▼' : '▶'}</span>
                         </div>
                       </div>
                     </button>
 
                     {isExpanded && (
-                      <div className="border-t border-amber-800 bg-amber-950 p-3 space-y-3">
-                        <div className="text-xs text-amber-300">
+                      <div className="space-y-3 border-t border-slate-700 bg-slate-900 p-3">
+                        <div className="text-xs text-slate-400">
                           <span className="font-semibold">{notification.engine}</span>
                         </div>
                         {notification.suggestions.map((suggestion, index) => (
-                          <div key={index} className="rounded border border-amber-800 bg-amber-900/30 p-2">
+                          <div key={index} className="rounded border border-slate-700 bg-slate-800 p-2">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1">
-                                <p className="font-semibold text-amber-100 text-xs">{suggestion.title}</p>
+                                <p className="text-xs font-semibold text-slate-100">{suggestion.title}</p>
                                 {suggestion.reason && (
-                                  <p className="mt-1 text-xs text-amber-200">
+                                  <p className="mt-1 text-xs text-slate-300">
                                     <span className="font-semibold">Motivo:</span> {suggestion.reason}
                                   </p>
                                 )}
@@ -547,26 +511,26 @@ function CrmPage({ onViewTimeline }) {
                                   suggestion.priority === 'urgent' ? 'bg-red-900/60 text-red-100' :
                                   suggestion.priority === 'high' ? 'bg-orange-900/60 text-orange-100' :
                                   suggestion.priority === 'medium' ? 'bg-yellow-900/60 text-yellow-100' :
-                                  'bg-amber-900 text-amber-100'
+                                  'bg-slate-700 text-slate-200'
                                 }`}>
                                   {suggestion.priority}
                                 </span>
                               </div>
                             </div>
                             {suggestion.channel && (
-                              <p className="mt-2 text-xs text-amber-300">
+                              <p className="mt-2 text-xs text-slate-400">
                                 <span className="font-semibold">Canal:</span> {suggestion.channel}
                               </p>
                             )}
                             {suggestion.suggested_message && (
-                              <div className="mt-2 rounded bg-amber-950/50 p-2 border border-amber-800">
-                                <p className="text-xs font-semibold text-amber-300 mb-1">✉️ Sugestão:</p>
-                                <p className="text-xs text-amber-100 italic">{suggestion.suggested_message}</p>
+                              <div className="mt-2 rounded border border-slate-700 bg-slate-900 p-2">
+                                <p className="mb-1 text-xs font-semibold text-slate-400">Sugestão:</p>
+                                <p className="text-xs italic text-slate-200">{suggestion.suggested_message}</p>
                               </div>
                             )}
                             {suggestion.due_date && (
-                              <p className="mt-2 text-xs text-amber-300">
-                                <span className="font-semibold">⏰ Prazo:</span> {formatDateTime(suggestion.due_date)}
+                              <p className="mt-2 text-xs text-slate-400">
+                                <span className="font-semibold">Prazo:</span> {formatDateTime(suggestion.due_date)}
                               </p>
                             )}
                           </div>
@@ -806,50 +770,6 @@ function CrmPage({ onViewTimeline }) {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-slate-200">
-              Timeline {selectedCompanyName ? `• ${selectedCompanyName}` : ''}
-            </h2>
-
-            <button
-              type="button"
-              onClick={handleGenerateNextActions}
-              disabled={!selectedCompanyId || loadingAiNotifications}
-              className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-600 disabled:cursor-not-allowed disabled:bg-slate-600"
-            >
-              {loadingAiNotifications ? 'Gerando notificação IA...' : 'Gerar notificação IA'}
-            </button>
-          </div>
-
-          {!selectedCompanyId ? (
-            <div className="mt-3 rounded-lg border border-dashed border-slate-600 bg-slate-900 p-6 text-center text-sm text-slate-400">
-              Selecione uma empresa no pipeline para ver o histórico completo.
-            </div>
-          ) : loadingTimeline ? (
-            <div className="mt-3 rounded-lg border border-dashed border-slate-600 bg-slate-900 p-6 text-center text-sm text-slate-400">
-              Carregando timeline...
-            </div>
-          ) : timeline.length === 0 ? (
-            <div className="mt-3 rounded-lg border border-dashed border-slate-600 bg-slate-900 p-6 text-center text-sm text-slate-400">
-              Sem eventos nesta timeline.
-            </div>
-          ) : (
-            <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto">
-              {timeline.map((item) => (
-                <article key={item.id} className="rounded-lg border border-slate-700 bg-slate-900 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-100">{item.title}</p>
-                    <span className="text-[11px] text-slate-500">
-                      {getChannelLabel(item.channel)} • {formatDateTime(item.created_at)}
-                    </span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-300">{item.details || '-'}</p>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
       </div>
     </main>
   );

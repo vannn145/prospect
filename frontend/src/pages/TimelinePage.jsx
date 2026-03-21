@@ -5,31 +5,31 @@ function getChannelLabel(channel) {
   const normalized = String(channel || '').toLowerCase();
 
   if (normalized === 'email') {
-    return '📧 Email';
+    return 'Email';
   }
 
   if (normalized === 'whatsapp') {
-    return '💬 WhatsApp';
+    return 'WhatsApp';
   }
 
   if (normalized === 'site') {
-    return '🌐 Site';
+    return 'Site';
   }
 
   if (normalized === 'call') {
-    return '☎️ Ligação';
+    return 'Ligação';
   }
 
   if (normalized === 'meeting') {
-    return '👥 Reunião';
+    return 'Reunião';
   }
 
   if (normalized === 'proposal') {
-    return '📄 Proposta';
+    return 'Proposta';
   }
 
   if (normalized === 'note') {
-    return '📝 Nota';
+    return 'Nota';
   }
 
   return 'Sistema';
