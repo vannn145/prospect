@@ -672,12 +672,12 @@ function CrmPage({ onViewTimeline }) {
             )}
           </div>
 
-          <div className="space-y-4 rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-200">Tarefas CRM</h2>
+          <div className="space-y-4 rounded-xl border border-teal-700/30 bg-slate-800 p-4 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-100">Tarefas CRM</h2>
 
-            <form className="space-y-2 rounded-lg border border-slate-700 bg-slate-900/50 p-3" onSubmit={handleCreateTask}>
+            <form className="space-y-2 rounded-lg border border-slate-600 bg-slate-800/70 p-3" onSubmit={handleCreateTask}>
               <div>
-                <label className="mb-1 block text-xs text-slate-400" htmlFor="crm-task-company-id">ID empresa</label>
+                <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-company-id">ID empresa</label>
                 <input
                   id="crm-task-company-id"
                   type="number"
@@ -686,11 +686,11 @@ function CrmPage({ onViewTimeline }) {
                   onChange={(event) => setNewTask((current) => ({ ...current, companyId: event.target.value }))}
                   placeholder="Ex.: 1297"
                   required
-                  className="w-full rounded-md border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-slate-100"
+                  className="w-full rounded-md border border-slate-500 bg-slate-50 px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-400" htmlFor="crm-task-title">Título</label>
+                <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-title">Título</label>
                 <input
                   id="crm-task-title"
                   type="text"
@@ -698,28 +698,28 @@ function CrmPage({ onViewTimeline }) {
                   onChange={(event) => setNewTask((current) => ({ ...current, title: event.target.value }))}
                   placeholder="Ex.: Ligar para apresentar proposta"
                   required
-                  className="w-full rounded-md border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-slate-100"
+                  className="w-full rounded-md border border-slate-500 bg-slate-50 px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-400" htmlFor="crm-task-desc">Descrição</label>
+                <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-desc">Descrição</label>
                 <textarea
                   id="crm-task-desc"
                   rows={2}
                   value={newTask.description}
                   onChange={(event) => setNewTask((current) => ({ ...current, description: event.target.value }))}
                   placeholder="Detalhes da tarefa"
-                  className="w-full rounded-md border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-slate-100"
+                  className="w-full rounded-md border border-slate-500 bg-slate-50 px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-teal-500 focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-1 block text-xs text-slate-400" htmlFor="crm-task-priority">Prioridade</label>
+                  <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-priority">Prioridade</label>
                   <select
                     id="crm-task-priority"
                     value={newTask.priority}
                     onChange={(event) => setNewTask((current) => ({ ...current, priority: event.target.value }))}
-                    className="w-full rounded-md border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-slate-100"
+                    className="w-full rounded-md border border-slate-500 bg-slate-50 px-2 py-1.5 text-sm text-slate-900 focus:border-teal-500 focus:outline-none"
                   >
                     {TASK_PRIORITY_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -727,27 +727,27 @@ function CrmPage({ onViewTimeline }) {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-slate-400" htmlFor="crm-task-due">Vencimento</label>
+                  <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-due">Vencimento</label>
                   <input
                     id="crm-task-due"
                     type="datetime-local"
                     value={newTask.dueDate}
                     onChange={(event) => setNewTask((current) => ({ ...current, dueDate: event.target.value }))}
-                    className="w-full rounded-md border border-slate-600 bg-slate-700 px-2 py-1.5 text-sm text-slate-100"
+                    className="w-full rounded-md border border-slate-500 bg-slate-50 px-2 py-1.5 text-sm text-slate-900 focus:border-teal-500 focus:outline-none"
                   />
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={creatingTask}
-                className="w-full rounded-md bg-teal-500 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-600"
+                className="w-full rounded-md bg-teal-500 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:bg-slate-500"
               >
                 {creatingTask ? 'Criando tarefa...' : 'Criar tarefa'}
               </button>
             </form>
 
-            <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-2">
-              <p className="mb-2 text-xs text-slate-400">
+            <div className="rounded-lg border border-slate-600 bg-slate-800/60 p-2">
+              <p className="mb-2 text-xs text-slate-300">
                 Abertas: {Number(tasksSummary.open || 0)} • Vencidas: {Number(tasksSummary.overdue || 0)} • Hoje: {Number(tasksSummary.due_today || 0)}
               </p>
 
@@ -758,11 +758,11 @@ function CrmPage({ onViewTimeline }) {
               ) : (
                 <div className="max-h-[420px] space-y-2 overflow-y-auto">
                   {tasks.map((task) => (
-                    <article key={task.id} className="rounded-md border border-slate-700 bg-slate-900 p-2">
+                    <article key={task.id} className="rounded-md border border-slate-600 bg-slate-50 p-2">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-sm font-semibold text-slate-100">{task.title}</p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-sm font-semibold text-slate-900">{task.title}</p>
+                          <p className="text-xs text-slate-600">
                             {task.company?.name || `Empresa #${task.company_id}`}
                           </p>
                         </div>
@@ -772,12 +772,12 @@ function CrmPage({ onViewTimeline }) {
                       </div>
 
                       <div className="mt-2 flex items-center justify-between gap-2">
-                        <p className="text-[11px] text-slate-500">Vence: {formatDateTime(task.due_date)}</p>
+                        <p className="text-[11px] text-slate-600">Vence: {formatDateTime(task.due_date)}</p>
                         <select
                           value={task.status}
                           onChange={(event) => handleUpdateTaskStatus(task, event.target.value)}
                           disabled={savingTaskId === task.id}
-                          className="rounded-md border border-slate-600 bg-slate-700 px-2 py-1 text-xs text-slate-100 disabled:cursor-not-allowed disabled:bg-slate-600"
+                          className="rounded-md border border-slate-400 bg-white px-2 py-1 text-xs text-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200"
                         >
                           {TASK_STATUS_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
