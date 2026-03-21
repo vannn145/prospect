@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   createCrmTask,
@@ -148,6 +148,8 @@ function CrmPage() {
   const [loadingAiNotifications, setLoadingAiNotifications] = useState(false);
   const [savingTaskId, setSavingTaskId] = useState(null);
   const [creatingTask, setCreatingTask] = useState(false);
+
+  const timelineRef = useRef(null);
   const [recalculatingScores, setRecalculatingScores] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState('');
@@ -587,6 +589,10 @@ function CrmPage() {
                                 ...current,
                                 companyId: String(item.company.id),
                               }));
+                              // Scroll to timeline section after a short delay
+                              setTimeout(() => {
+                                timelineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }, 100);
                             }}
                             className="rounded-md bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-600"
                           >
@@ -721,7 +727,7 @@ function CrmPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
+        <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm" ref={timelineRef}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-slate-200">
               Timeline {selectedCompanyName ? `• ${selectedCompanyName}` : ''}
