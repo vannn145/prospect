@@ -136,6 +136,7 @@ function CrmPage({ onViewTimeline }) {
 
   const [selectedCompanyId, setSelectedCompanyId] = useState(null);
   const [selectedCompanyName, setSelectedCompanyName] = useState('');
+  const [expandedNotificationId, setExpandedNotificationId] = useState(null);
 
   const [stageFilter, setStageFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -490,6 +491,95 @@ function CrmPage({ onViewTimeline }) {
           <StatCard title="Score médio" value={loadingOverview ? '...' : Number(totals.avg_crm_score || 0)} />
         </section>
 
+        {aiNotifications.length > 0 && (
+          <section className="rounded-xl border border-amber-700 bg-amber-950 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-base font-semibold text-amber-100">🤖 Notificações IA</h2>
+              <span className="rounded-full bg-amber-900 px-2.5 py-1 text-xs font-semibold text-amber-100">
+                {aiNotifications.length}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {aiNotifications.map((notification) => {
+                const isExpanded = expandedNotificationId === notification.id;
+                return (
+                  <article key={notification.id} className="rounded-lg border border-amber-800 bg-amber-900/40 transition hover:border-amber-700">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedNotificationId(isExpanded ? null : notification.id)}
+                      className="w-full p-3 text-left"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-amber-100">{notification.companyName}</p>
+                          <p className="mt-1 text-xs text-amber-200">
+                            {notification.suggestions[0]?.title || 'Nova recomendação de ação.'}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[11px] text-amber-300">
+                            {formatDateTime(notification.createdAt)}
+                          </span>
+                          <span className="text-[10px] text-amber-300">{isExpanded ? '▼' : '▶'}</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-amber-800 bg-amber-950 p-3 space-y-3">
+                        <div className="text-xs text-amber-300">
+                          <span className="font-semibold">{notification.engine}</span>
+                        </div>
+                        {notification.suggestions.map((suggestion, index) => (
+                          <div key={index} className="rounded border border-amber-800 bg-amber-900/30 p-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <p className="font-semibold text-amber-100 text-xs">{suggestion.title}</p>
+                                {suggestion.reason && (
+                                  <p className="mt-1 text-xs text-amber-200">
+                                    <span className="font-semibold">Motivo:</span> {suggestion.reason}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+                                  suggestion.priority === 'urgent' ? 'bg-red-900/60 text-red-100' :
+                                  suggestion.priority === 'high' ? 'bg-orange-900/60 text-orange-100' :
+                                  suggestion.priority === 'medium' ? 'bg-yellow-900/60 text-yellow-100' :
+                                  'bg-amber-900 text-amber-100'
+                                }`}>
+                                  {suggestion.priority}
+                                </span>
+                              </div>
+                            </div>
+                            {suggestion.channel && (
+                              <p className="mt-2 text-xs text-amber-300">
+                                <span className="font-semibold">Canal:</span> {suggestion.channel}
+                              </p>
+                            )}
+                            {suggestion.suggested_message && (
+                              <div className="mt-2 rounded bg-amber-950/50 p-2 border border-amber-800">
+                                <p className="text-xs font-semibold text-amber-300 mb-1">✉️ Sugestão:</p>
+                                <p className="text-xs text-amber-100 italic">{suggestion.suggested_message}</p>
+                              </div>
+                            )}
+                            {suggestion.due_date && (
+                              <p className="mt-2 text-xs text-amber-300">
+                                <span className="font-semibold">⏰ Prazo:</span> {formatDateTime(suggestion.due_date)}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <form className="flex flex-1 flex-wrap items-end gap-3" onSubmit={handleSearchSubmit}>
@@ -755,37 +845,6 @@ function CrmPage({ onViewTimeline }) {
                     </span>
                   </div>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-slate-300">{item.details || '-'}</p>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-slate-200">Notificações IA</h2>
-            <span className="rounded-full bg-slate-700 px-2.5 py-1 text-xs font-semibold text-slate-200">
-              {aiNotifications.length}
-            </span>
-          </div>
-
-          {aiNotifications.length === 0 ? (
-            <div className="mt-3 rounded-lg border border-dashed border-slate-600 bg-slate-900 p-5 text-sm text-slate-400">
-              Sem notificações IA ainda.
-            </div>
-          ) : (
-            <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto">
-              {aiNotifications.map((notification) => (
-                <article key={notification.id} className="rounded-lg border border-slate-700 bg-slate-900 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-100">🔔 {notification.companyName}</p>
-                    <span className="text-[11px] text-slate-500">
-                      {formatDateTime(notification.createdAt)} • {notification.engine}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {notification.suggestions[0]?.title || 'Nova recomendação de ação.'}
-                  </p>
                 </article>
               ))}
             </div>
