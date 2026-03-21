@@ -708,14 +708,14 @@ function WhatsAppInboxPage() {
               </div>
             </aside>
 
-            <section className="flex min-h-[640px] flex-col bg-slate-800">
+            <section className="flex min-h-[640px] flex-col bg-[#efeae2]">
               {selectedConversation ? (
                 <>
-                  <div className="border-b border-slate-700 bg-slate-900/70 px-4 py-3">
+                  <div className="border-b border-[#d1d7db] bg-[#f0f2f5] px-4 py-3">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-slate-100">{getDisplayName(selectedConversation)}</p>
-                        <p className="mt-0.5 text-xs text-slate-400">
+                        <p className="text-sm font-semibold text-slate-800">{getDisplayName(selectedConversation)}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
                           {selectedConversation.phone_display}
                           {selectedConversation.company?.name
                             ? ` • Empresa vinculada: ${selectedConversation.company.name}`
@@ -734,7 +734,7 @@ function WhatsAppInboxPage() {
                           value={selectedConversation.contact_tag || ''}
                           onChange={(event) => handleUpdateConversationTag(event.target.value)}
                           disabled={savingTag}
-                          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-100 focus:border-teal-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-700"
+                          className="rounded-lg border border-[#d1d7db] bg-white px-3 py-2 text-xs text-slate-700 focus:border-teal-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
                         >
                           {CONTACT_TAG_OPTIONS.map((option) => (
                             <option key={option.value || 'empty'} value={option.value}>
@@ -748,11 +748,19 @@ function WhatsAppInboxPage() {
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-slate-800 px-4 py-4">
+                  <div
+                    className="flex-1 overflow-y-auto px-4 py-4"
+                    style={{
+                      backgroundColor: '#efeae2',
+                      backgroundImage: 'radial-gradient(circle at 25px 25px, rgba(255,255,255,0.28) 2px, transparent 0), radial-gradient(circle at 75px 75px, rgba(0,0,0,0.04) 2px, transparent 0), linear-gradient(135deg, rgba(255,255,255,0.08) 25%, transparent 25%), linear-gradient(225deg, rgba(255,255,255,0.08) 25%, transparent 25%), linear-gradient(315deg, rgba(255,255,255,0.08) 25%, transparent 25%), linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%)',
+                      backgroundPosition: '0 0, 0 0, 12px 0, 12px 0, 0 0, 0 0',
+                      backgroundSize: '100px 100px, 100px 100px, 24px 24px, 24px 24px, 24px 24px, 24px 24px',
+                    }}
+                  >
                     {loadingMessages ? (
-                      <div className="text-sm text-slate-400">Carregando mensagens...</div>
+                      <div className="text-sm text-slate-500">Carregando mensagens...</div>
                     ) : messages.length === 0 ? (
-                      <div className="text-sm text-slate-400">Sem mensagens nessa conversa.</div>
+                      <div className="text-sm text-slate-500">Sem mensagens nessa conversa.</div>
                     ) : (
                       <div className="space-y-3">
                         {messages.map((message) => {
@@ -763,14 +771,14 @@ function WhatsAppInboxPage() {
                               <article
                                 className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                                   isOutbound
-                                    ? 'bg-teal-500 text-white'
-                                    : 'bg-slate-700 text-slate-100'
+                                    ? 'bg-[#d9fdd3] text-slate-800'
+                                    : 'bg-white text-slate-800'
                                 }`}
                               >
                                 <p className="whitespace-pre-wrap break-words">{message.text_body || '[mensagem]'}</p>
                                 <p
                                   className={`mt-1 text-[11px] ${
-                                    isOutbound ? 'text-teal-100' : 'text-slate-300'
+                                    isOutbound ? 'text-slate-500' : 'text-slate-400'
                                   }`}
                                 >
                                   {formatMessageTime(message.created_at)}
@@ -785,14 +793,14 @@ function WhatsAppInboxPage() {
                     )}
                   </div>
 
-                  <form className="border-t border-slate-700 bg-slate-900/60 p-4" onSubmit={handleSendReply}>
+                  <form className="border-t border-[#d1d7db] bg-[#f0f2f5] p-4" onSubmit={handleSendReply}>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <textarea
                         rows={2}
                         value={replyText}
                         onChange={(event) => setReplyText(event.target.value)}
                         placeholder="Digite sua resposta para o cliente..."
-                        className="w-full resize-none rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                        className="w-full resize-none rounded-lg border border-[#d1d7db] bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 focus:outline-none"
                       />
                       <button
                         type="submit"
