@@ -7,6 +7,7 @@ import EmailPage from './pages/EmailPage';
 import KanbanPage from './pages/KanbanPage';
 import LoginPage from './pages/LoginPage';
 import CrmPage from './pages/CrmPage';
+import TimelinePage from './pages/TimelinePage';
 import WhatsAppInboxPage from './pages/WhatsAppInboxPage';
 import UserAccountPanel from './components/UserAccountPanel';
 
@@ -206,6 +207,8 @@ function SideNavigation({ currentPage, onNavigate, isOpen, onToggle, theme, onTo
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [timelineCompanyId, setTimelineCompanyId] = useState(null);
+  const [timelineCompanyName, setTimelineCompanyName] = useState('');
   const [authStatus, setAuthStatus] = useState('checking');
   const [authUser, setAuthUser] = useState(() => getAuthUser());
   const [authenticating, setAuthenticating] = useState(false);
@@ -335,6 +338,20 @@ function App() {
     );
   }
 
+  // Timeline sub-page navigation
+  if (timelineCompanyId) {
+    return withAuthenticatedChrome(
+      <TimelinePage
+        companyId={timelineCompanyId}
+        companyName={timelineCompanyName}
+        onBack={() => {
+          setTimelineCompanyId(null);
+          setTimelineCompanyName('');
+        }}
+      />
+    );
+  }
+
   if (currentPage === 'dashboard') {
     return withAuthenticatedChrome(<DashboardPage />);
   }
@@ -348,7 +365,14 @@ function App() {
   }
 
   if (currentPage === 'crm') {
-    return withAuthenticatedChrome(<CrmPage />);
+    return withAuthenticatedChrome(
+      <CrmPage
+        onViewTimeline={(companyId, companyName) => {
+          setTimelineCompanyId(companyId);
+          setTimelineCompanyName(companyName);
+        }}
+      />
+    );
   }
 
   return withAuthenticatedChrome(<WhatsAppInboxPage />);
