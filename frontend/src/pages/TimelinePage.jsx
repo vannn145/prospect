@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchCrmCompanyTimeline } from '../api/client';
+import { createCrmCompanyActivity, fetchCrmCompanyTimeline, updateKanbanCard } from '../api/client';
 
 const STAGE_FLOW = [
   { key: 'entrada', label: 'Prospecção' },
@@ -89,6 +89,8 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
   const [activeActionTab, setActiveActionTab] = useState('note');
   const [selectedStage, setSelectedStage] = useState('entrada');
   const [actionFeedback, setActionFeedback] = useState('');
+  const [savingAction, setSavingAction] = useState(false);
+  const [updatingStage, setUpdatingStage] = useState(false);
 
   const currentStage = useMemo(
     () => normalizeStage(companyData?.stage, companyData?.stage_label),
@@ -99,7 +101,7 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
     setSelectedStage(currentStage);
   }, [currentStage]);
 
-  function handleSaveAction() {
+  async function handleSaveAction() {
     const trimmed = noteDraft.trim();
 
     if (!trimmed) {
@@ -117,26 +119,73 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
     };
 
     const actionChannels = {
-      note: 'note',
+      note: 'system',
       email: 'email',
-      call: 'call',
-      proposal: 'proposal',
-      meeting: 'meeting',
-      visit: 'visit',
+      call: 'task',
+      proposal: 'task',
+      meeting: 'task',
+      visit: 'task',
     };
 
-    const newEvent = {
-      id: `local-${Date.now()}`,
-      title: actionLabels[activeActionTab] || 'Ação registrada',
-      channel: actionChannels[activeActionTab] || 'note',
-      created_at: new Date().toISOString(),
-      description: trimmed,
-      details: '',
-    };
+    try {
+      setSavingAction(true);
 
-    setTimeline((current) => [newEvent, ...current]);
-    setNoteDraft('');
-    setActionFeedback('Ação registrada no histórico.');
+      const response = await createCrmCompanyActivity(companyId, {
+        cardId: companyData?.card_id || null,
+        title: actionLabels[activeActionTab] || 'Ação registrada',
+        details: trimmed,
+        activityType: `manual_${activeActionTab}`,
+        channel: actionChannels[activeActionTab] || 'system',
+        metadata: {
+          action_tab: activeActionTab,
+          source: 'crm_detail',
+        },
+      });
+
+      const savedActivity = response?.activity;
+
+      if (savedActivity) {
+        setTimeline((current) => [
+          {
+            id: `activity-${savedActivity.id}`,
+            created_at: savedActivity.created_at,
+            channel: savedActivity.channel,
+            activity_type: savedActivity.activity_type,
+            title: savedActivity.title,
+            details: savedActivity.details,
+            metadata: savedActivity.metadata || {},
+          },
+          ...current,
+        ]);
+      }
+
+      setNoteDraft('');
+      setActionFeedback('Ação registrada no histórico.');
+    } catch (saveError) {
+      setActionFeedback(saveError?.message || 'Erro ao salvar ação.');
+    } finally {
+      setSavingAction(false);
+    }
+  }
+
+  async function handleStageChange(stageKey) {
+    setSelectedStage(stageKey);
+
+    if (!companyData?.card_id) {
+      setActionFeedback('Não foi possível atualizar fase: card CRM não encontrado.');
+      return;
+    }
+
+    try {
+      setUpdatingStage(true);
+      await updateKanbanCard(companyData.card_id, { stage: stageKey });
+      setActionFeedback('Fase atualizada com sucesso.');
+    } catch (stageError) {
+      setActionFeedback(stageError?.message || 'Erro ao atualizar fase.');
+      setSelectedStage(currentStage);
+    } finally {
+      setUpdatingStage(false);
+    }
   }
 
   useEffect(() => {
@@ -201,7 +250,8 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
               <button
                 key={stage.key}
                 type="button"
-                onClick={() => setSelectedStage(stage.key)}
+                onClick={() => handleStageChange(stage.key)}
+                disabled={updatingStage}
                 style={{ clipPath }}
                 className={`rounded-lg border px-3 py-2 text-center text-sm font-semibold ${
                   isActive
@@ -262,9 +312,10 @@ export default function TimelinePage({ companyId, companyName, companyData, onBa
               <button
                 type="button"
                 onClick={handleSaveAction}
+                disabled={savingAction}
                 className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-400"
               >
-                Salvar e marcar como finalizada
+                {savingAction ? 'Salvando...' : 'Salvar e marcar como finalizada'}
               </button>
             </div>
           </article>

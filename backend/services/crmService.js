@@ -8,6 +8,7 @@ const { saveOutboundToInbox } = require('./whatsappInboxService');
 const KANBAN_STAGES = ['entrada', 'contato', 'proposta', 'negociacao', 'fechado', 'perdido'];
 const TASK_STATUSES = ['pending', 'in_progress', 'done', 'canceled'];
 const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+const ACTIVITY_CHANNELS = ['kanban', 'whatsapp', 'email', 'task', 'system'];
 const SUCCESS_WHATSAPP_STATUSES = new Set(['accepted', 'sent', 'delivered', 'read']);
 
 const STAGE_ORDER_SQL = `
@@ -169,6 +170,16 @@ function normalizeTaskPriority(value, fallback = 'medium') {
 
   if (!TASK_PRIORITIES.includes(normalized)) {
     throw new Error(`priority inválida. Use: ${TASK_PRIORITIES.join(', ')}`);
+  }
+
+  return normalized;
+}
+
+function normalizeActivityChannel(value, fallback = 'system') {
+  const normalized = String(value || fallback).trim().toLowerCase();
+
+  if (!ACTIVITY_CHANNELS.includes(normalized)) {
+    return fallback;
   }
 
   return normalized;
@@ -1233,6 +1244,43 @@ async function listCrmCompanyTimeline({ companyId, limit = 120 } = {}) {
   return result.rows;
 }
 
+async function createCrmActivity(companyId, payload = {}, { actorUsername = null } = {}) {
+  const normalizedCompanyId = Number(companyId);
+
+  if (!normalizedCompanyId) {
+    throw new Error('companyId inválido para registrar atividade.');
+  }
+
+  const company = await getCompanyById(normalizedCompanyId);
+
+  if (!company) {
+    throw new Error('Empresa não encontrada para registrar atividade.');
+  }
+
+  const title = sanitizeText(payload.title);
+
+  if (!title) {
+    throw new Error('title é obrigatório para registrar atividade.');
+  }
+
+  const metadata = payload.metadata && typeof payload.metadata === 'object'
+    ? payload.metadata
+    : null;
+
+  const activity = await logCrmActivity({
+    companyId: normalizedCompanyId,
+    cardId: payload.cardId == null ? null : Number(payload.cardId),
+    activityType: sanitizeText(payload.activityType) || 'manual_note',
+    channel: normalizeActivityChannel(payload.channel, 'system'),
+    title,
+    details: sanitizeText(payload.details),
+    metadata,
+    createdBy: sanitizeText(actorUsername) || 'manual',
+  });
+
+  return activity;
+}
+
 function inferPreferredChannel(company) {
   if (sanitizeText(company?.phone)) {
     return 'whatsapp';
@@ -1979,6 +2027,7 @@ module.exports = {
   createCrmTask,
   updateCrmTask,
   listCrmCompanyTimeline,
+  createCrmActivity,
   suggestCrmNextActions,
   recalculateCrmScores,
   runCrmStageAutomations,

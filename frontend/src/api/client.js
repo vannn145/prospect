@@ -271,6 +271,13 @@ export async function fetchCrmCompanyTimeline(companyId, limit = 120) {
   return request(`/crm/companies/${Number(companyId)}/timeline?limit=${Number(limit || 120)}`);
 }
 
+export async function createCrmCompanyActivity(companyId, payload) {
+  return request(`/crm/companies/${Number(companyId)}/activities`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
 export async function fetchCrmNextActions(companyId, limit = 4) {
   return request(`/crm/companies/${Number(companyId)}/next-actions?limit=${Number(limit || 4)}`);
 }

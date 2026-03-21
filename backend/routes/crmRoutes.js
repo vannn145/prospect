@@ -7,6 +7,7 @@ const {
   createCrmTask,
   updateCrmTask,
   listCrmCompanyTimeline,
+  createCrmActivity,
   suggestCrmNextActions,
   recalculateCrmScores,
 } = require('../services/crmService');
@@ -117,6 +118,23 @@ router.get('/companies/:id/timeline', async (req, res, next) => {
     return res.json({
       companyId: Number(id),
       timeline,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/companies/:id/activities', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const activity = await createCrmActivity(id, req.body || {}, {
+      actorUsername: req.user?.username || null,
+    });
+
+    return res.status(201).json({
+      message: 'Atividade registrada com sucesso.',
+      activity,
     });
   } catch (error) {
     return next(error);
