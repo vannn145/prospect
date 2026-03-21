@@ -672,12 +672,12 @@ function CrmPage({ onViewTimeline }) {
             )}
           </div>
 
-          <div className="space-y-4 rounded-xl border border-teal-700/30 bg-slate-800 p-4 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-100">Tarefas CRM</h2>
+          <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">Tarefas CRM</h2>
 
-            <form className="space-y-2 rounded-lg border border-slate-600 bg-slate-800/70 p-3" onSubmit={handleCreateTask}>
+            <form className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3" onSubmit={handleCreateTask}>
               <div>
-                <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-company-id">ID empresa</label>
+                <label className="mb-1 block text-xs text-slate-600" htmlFor="crm-task-company-id">ID empresa</label>
                 <input
                   id="crm-task-company-id"
                   type="number"
@@ -690,7 +690,7 @@ function CrmPage({ onViewTimeline }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-title">Título</label>
+                <label className="mb-1 block text-xs text-slate-600" htmlFor="crm-task-title">Título</label>
                 <input
                   id="crm-task-title"
                   type="text"
@@ -702,7 +702,7 @@ function CrmPage({ onViewTimeline }) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-desc">Descrição</label>
+                <label className="mb-1 block text-xs text-slate-600" htmlFor="crm-task-desc">Descrição</label>
                 <textarea
                   id="crm-task-desc"
                   rows={2}
@@ -714,7 +714,7 @@ function CrmPage({ onViewTimeline }) {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-priority">Prioridade</label>
+                  <label className="mb-1 block text-xs text-slate-600" htmlFor="crm-task-priority">Prioridade</label>
                   <select
                     id="crm-task-priority"
                     value={newTask.priority}
@@ -727,7 +727,7 @@ function CrmPage({ onViewTimeline }) {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-slate-300" htmlFor="crm-task-due">Vencimento</label>
+                  <label className="mb-1 block text-xs text-slate-600" htmlFor="crm-task-due">Vencimento</label>
                   <input
                     id="crm-task-due"
                     type="datetime-local"
@@ -746,19 +746,19 @@ function CrmPage({ onViewTimeline }) {
               </button>
             </form>
 
-            <div className="rounded-lg border border-slate-600 bg-slate-800/60 p-2">
-              <p className="mb-2 text-xs text-slate-300">
+            <div className="rounded-lg border border-slate-200 bg-white p-2">
+              <p className="mb-2 text-xs text-slate-600">
                 Abertas: {Number(tasksSummary.open || 0)} • Vencidas: {Number(tasksSummary.overdue || 0)} • Hoje: {Number(tasksSummary.due_today || 0)}
               </p>
 
               {loadingTasks ? (
-                <div className="py-6 text-center text-sm text-slate-400">Carregando tarefas...</div>
+                <div className="py-6 text-center text-sm text-slate-500">Carregando tarefas...</div>
               ) : tasks.length === 0 ? (
-                <div className="py-6 text-center text-sm text-slate-400">Nenhuma tarefa encontrada.</div>
+                <div className="py-6 text-center text-sm text-slate-500">Nenhuma tarefa encontrada.</div>
               ) : (
                 <div className="max-h-[420px] space-y-2 overflow-y-auto">
                   {tasks.map((task) => (
-                    <article key={task.id} className="rounded-md border border-slate-600 bg-slate-50 p-2">
+                    <article key={task.id} className="rounded-md border border-slate-200 bg-white p-2">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">{task.title}</p>
