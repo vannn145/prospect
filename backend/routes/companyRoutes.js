@@ -32,6 +32,7 @@ const {
   sendMetaWhatsAppMessage,
   normalizePhoneNumber,
 } = require('../services/metaWhatsAppService');
+const { fetchFreePlacesByCityAndCategory } = require('../services/googlePlacesService');
 const { saveOutboundToInbox } = require('../services/whatsappInboxService');
 const { query } = require('../database/db');
 
@@ -504,6 +505,62 @@ router.get('/companies/phones', async (req, res, next) => {
 
     return res.json(phones);
   } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/companies/phones/live', async (req, res, next) => {
+  try {
+    const {
+      city,
+      category,
+      radius,
+      maxPages,
+      onlyWithPhone,
+      limit,
+    } = req.query;
+
+    if (!city || !category) {
+      return res.status(400).json({
+        error: 'Os campos city e category são obrigatórios.',
+      });
+    }
+
+    const places = await fetchFreePlacesByCityAndCategory({
+      city: String(city).trim(),
+      category: String(category).trim(),
+      radius: Number(radius || 5000),
+      maxPages: Number(maxPages || 3),
+    });
+
+    const mustHavePhone = parseBoolean(onlyWithPhone, true);
+    const maxItems = Math.max(1, Math.min(Number(limit || 200), 500));
+
+    const items = places
+      .filter((place) => !mustHavePhone || Boolean(normalizeDigits(place.phone_number)))
+      .slice(0, maxItems)
+      .map((place) => ({
+        name: place.name,
+        phone: place.phone_number || null,
+        phone_digits: normalizeDigits(place.phone_number),
+        city: place.city,
+        category: place.category,
+        address: place.address || null,
+        website: place.website || null,
+        place_id: place.place_id,
+        source: place.source || 'osm',
+        latitude: place.latitude ?? null,
+        longitude: place.longitude ?? null,
+      }));
+
+    return res.json({
+      provider: 'openstreetmap',
+      updatedAt: new Date().toISOString(),
+      total: items.length,
+      items,
+    });
+  } catch (error) {
+    error.statusCode = Number(error.statusCode) || 502;
     return next(error);
   }
 });

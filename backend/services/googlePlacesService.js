@@ -279,6 +279,19 @@ async function fetchPlacesByOsm({ city, category, radius = 5000, maxPages = 3 })
   return [...uniqueById.values()];
 }
 
+async function fetchFreePlacesByCityAndCategory({
+  city,
+  category,
+  radius = 5000,
+  maxPages = 3,
+} = {}) {
+  if (!city || !category) {
+    throw new Error('Os campos city e category são obrigatórios.');
+  }
+
+  return fetchPlacesByOsm({ city, category, radius, maxPages });
+}
+
 function generateMockPlaces({ city, category, radius = 5000 }) {
   const label = CATEGORY_LABELS[category] || 'Empresa';
   const citySlug = slugify(city);
@@ -593,5 +606,6 @@ async function fetchPlacesByCityAndCategory({ city, category, radius = 5000, max
 
 module.exports = {
   fetchPlacesByCityAndCategory,
+  fetchFreePlacesByCityAndCategory,
   isGooglePlacesConfigured,
 };
