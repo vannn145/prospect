@@ -499,7 +499,7 @@ function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setShowManualModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-500"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16M4 12h16" />
@@ -783,7 +783,7 @@ function DashboardPage() {
                 <button
                   type="submit"
                   disabled={manualLoading}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-600"
+                  className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:bg-slate-600"
                 >
                   {manualLoading ? 'Salvando...' : 'Cadastrar'}
                 </button>

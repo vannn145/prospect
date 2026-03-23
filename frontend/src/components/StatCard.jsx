@@ -9,7 +9,7 @@ function StatCard({ title, value, icon }) {
         )}
         <p className="text-sm font-medium leading-tight text-slate-400">{title}</p>
       </div>
-      <p className="mt-3 text-3xl font-bold text-green-400">{value}</p>
+      <p className="mt-3 text-3xl font-bold text-teal-400">{value}</p>
     </div>
   );
 }
