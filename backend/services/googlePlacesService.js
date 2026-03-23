@@ -4,7 +4,11 @@ const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 const NEARBY_SEARCH_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
 const PLACE_DETAILS_URL = 'https://maps.googleapis.com/maps/api/place/details/json';
 const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_URLS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
+];
 
 const CATEGORY_LABELS = {
   atm: 'Caixa',
@@ -229,13 +233,27 @@ async function fetchPlacesByOsm({ city, category, radius = 5000, maxPages = 3 })
     category,
   });
 
-  const response = await axios.post(OVERPASS_URL, query, {
-    headers: {
-      'Content-Type': 'text/plain;charset=UTF-8',
-      'User-Agent': 'prospect/1.0 (osm-overpass-search)',
-    },
-    timeout: 30000,
-  });
+  let response = null;
+  let lastError = null;
+
+  for (const overpassUrl of OVERPASS_URLS) {
+    try {
+      response = await axios.post(overpassUrl, query, {
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+          'User-Agent': 'prospect/1.0 (osm-overpass-search)',
+        },
+        timeout: 45000,
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (!response) {
+    throw lastError || new Error('Falha ao consultar provedores Overpass.');
+  }
 
   const elements = Array.isArray(response.data?.elements) ? response.data.elements : [];
   const uniqueById = new Map();
