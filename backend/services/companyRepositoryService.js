@@ -12,6 +12,15 @@ function sanitizeText(value) {
   return trimmed || null;
 }
 
+function normalizePhoneDigits(value) {
+  if (value == null) {
+    return null;
+  }
+
+  const digits = String(value).replace(/\D/g, '');
+  return digits || null;
+}
+
 function mapCompany(row) {
   return {
     ...row,
@@ -157,6 +166,92 @@ async function getCompaniesPaginated({
   };
 }
 
+async function getCompanyPhonesPaginated({
+  status,
+  city,
+  category,
+  contacted,
+  onlyWithPhone = true,
+  page = 1,
+  perPage = 100,
+} = {}) {
+  const filters = [];
+  const params = [];
+
+  if (status) {
+    params.push(status);
+    filters.push(`status_site = $${params.length}`);
+  }
+
+  if (city) {
+    params.push(`%${String(city).trim()}%`);
+    filters.push(`city ILIKE $${params.length}`);
+  }
+
+  if (category) {
+    params.push(String(category).trim());
+    filters.push(`category = $${params.length}`);
+  }
+
+  if (typeof contacted === 'boolean') {
+    params.push(contacted);
+    filters.push(`contacted = $${params.length}`);
+  }
+
+  if (onlyWithPhone) {
+    filters.push(`phone IS NOT NULL AND BTRIM(phone) <> ''`);
+  }
+
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedPerPage = Math.min(500, Math.max(1, Number(perPage) || 100));
+  const offset = (normalizedPage - 1) * normalizedPerPage;
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+
+  const countSql = `
+    SELECT COUNT(*)::int AS total
+    FROM companies
+    ${whereClause};
+  `;
+
+  const countResult = await query(countSql, params);
+  const total = Number(countResult.rows[0]?.total || 0);
+
+  const sql = `
+    SELECT
+      id,
+      name,
+      phone,
+      city,
+      category,
+      status_site,
+      contacted,
+      website,
+      instagram_url,
+      place_id,
+      created_at
+    FROM companies
+    ${whereClause}
+    ORDER BY contacted ASC, created_at DESC
+    LIMIT $${params.length + 1}
+    OFFSET $${params.length + 2}
+  `;
+
+  const result = await query(sql, [...params, normalizedPerPage, offset]);
+  const items = result.rows.map((row) => ({
+    ...row,
+    phone_digits: normalizePhoneDigits(row.phone),
+  }));
+
+  return {
+    items,
+    page: normalizedPage,
+    perPage: normalizedPerPage,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / normalizedPerPage)),
+  };
+}
+
 async function markAsContacted(id) {
   const sql = `
     UPDATE companies
@@ -267,6 +362,7 @@ module.exports = {
   upsertCompany,
   getCompanies,
   getCompaniesPaginated,
+  getCompanyPhonesPaginated,
   markAsContacted,
   getStats,
   getCompaniesMissingInstagram,

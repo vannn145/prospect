@@ -5,6 +5,7 @@ const {
 } = require('../services/leadCollectorService');
 const {
   getCompaniesPaginated,
+  getCompanyPhonesPaginated,
   markAsContacted,
   getStats,
   getCompanyById,
@@ -474,6 +475,34 @@ router.get('/companies', async (req, res, next) => {
     });
 
     return res.json(companies);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/companies/phones', async (req, res, next) => {
+  try {
+    const {
+      status,
+      city,
+      category,
+      page,
+      perPage,
+      includeContacted,
+      onlyWithPhone,
+    } = req.query;
+
+    const phones = await getCompanyPhonesPaginated({
+      status,
+      city,
+      category,
+      page,
+      perPage,
+      contacted: parseBoolean(includeContacted, true) ? undefined : false,
+      onlyWithPhone: parseBoolean(onlyWithPhone, true),
+    });
+
+    return res.json(phones);
   } catch (error) {
     return next(error);
   }
