@@ -183,6 +183,13 @@ export async function sendInboxReply(waId, payload = {}) {
   });
 }
 
+export async function startInboxConversation(payload = {}) {
+  return request('/whatsapp/inbox/conversations/new', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchEmailOverview() {
   return request('/email/overview');
 }

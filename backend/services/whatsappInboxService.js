@@ -965,12 +965,66 @@ async function saveOutboundToInbox({ phone, profileName, messageId, mode, templa
   }
 }
 
+async function startNewConversation({ phone, name, message }) {
+  const digits = String(phone || '').replace(/\D/g, '').replace(/^0+/, '');
+
+  if (!digits || digits.length < 10) {
+    throw buildHttpError('Telefone inválido. Informe um número com DDD (ex: 11987654321).', 400);
+  }
+
+  // Normaliza: adiciona código do Brasil se necessário
+  const waId = digits.length <= 11 ? `55${digits}` : digits;
+
+  const normalizedName = sanitizeText(name);
+  const normalizedMessage = sanitizeText(message);
+
+  if (!normalizedMessage) {
+    throw buildHttpError('Mensagem vazia.', 400);
+  }
+
+  const contact = await ensureContact({ waId, profileName: normalizedName || null });
+
+  const providerResult = await sendMetaWhatsAppMessage({
+    toPhone: waId,
+    message: normalizedMessage,
+    mode: 'text',
+  });
+
+  const providerStatus = sanitizeText(providerResult?.providerResponse?.messages?.[0]?.message_status) || 'accepted';
+
+  const stored = await storeMessage({
+    contactId: contact.id,
+    waMessageId: providerResult.messageId,
+    direction: 'outbound',
+    messageType: 'text',
+    textBody: normalizedMessage,
+    status: providerStatus,
+    rawPayload: providerResult.providerResponse || providerResult,
+  });
+
+  await updateConversationSnapshot({
+    contactId: contact.id,
+    previewText: normalizedMessage,
+    unreadDelta: 0,
+  });
+
+  const conversation = await fetchConversationByWaId(waId);
+
+  return {
+    wa_id: waId,
+    conversation,
+    message: stored.message,
+    providerResult,
+  };
+}
+
 module.exports = {
   listInboxConversations,
   getInboxConversationMessages,
   markConversationAsRead,
   updateConversationTag,
   sendConversationReply,
+  startNewConversation,
   saveOutboundToInbox,
   processMetaWebhookPayload,
 };

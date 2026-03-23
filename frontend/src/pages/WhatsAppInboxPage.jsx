@@ -5,6 +5,7 @@ import {
   fetchInboxMessages,
   markInboxConversationRead,
   sendInboxReply,
+  startInboxConversation,
   updateInboxConversationTag,
 } from '../api/client';
 
@@ -145,6 +146,12 @@ function WhatsAppInboxPage() {
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  const [showNewContactModal, setShowNewContactModal] = useState(false);
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactMessage, setNewContactMessage] = useState('');
+  const [sendingNewContact, setSendingNewContact] = useState(false);
 
   const messageEndRef = useRef(null);
   const conversationsListRef = useRef(null);
@@ -504,6 +511,52 @@ function WhatsAppInboxPage() {
     }
   }
 
+  function handleOpenNewContactModal() {
+    setNewContactPhone('');
+    setNewContactName('');
+    setNewContactMessage('');
+    setErrorMessage('');
+    setSuccessMessage('');
+    setShowNewContactModal(true);
+  }
+
+  async function handleStartNewConversation(event) {
+    event.preventDefault();
+
+    const normalizedPhone = newContactPhone.trim();
+    const normalizedMessage = newContactMessage.trim();
+
+    if (!normalizedPhone || !normalizedMessage) {
+      return;
+    }
+
+    setSendingNewContact(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const result = await startInboxConversation({
+        phone: normalizedPhone,
+        name: newContactName.trim() || undefined,
+        message: normalizedMessage,
+      });
+
+      setShowNewContactModal(false);
+      setSuccessMessage('Mensagem enviada com sucesso para o novo contato.');
+
+      await loadConversations({ silent: true });
+
+      const newWaId = result?.wa_id || result?.conversation?.wa_id;
+      if (newWaId) {
+        setSelectedWaId(newWaId);
+      }
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setSendingNewContact(false);
+    }
+  }
+
   async function handleUpdateConversationTag(nextTag) {
     if (!selectedWaId) {
       return;
@@ -542,6 +595,13 @@ function WhatsAppInboxPage() {
 
             <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[360px]">
               <div className="flex flex-wrap gap-2 xl:justify-end">
+                <button
+                  type="button"
+                  onClick={handleOpenNewContactModal}
+                  className="rounded-lg border border-emerald-600 bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+                >
+                  + Novo Contato
+                </button>
                 <button
                   type="button"
                   onClick={() => loadConversations()}
@@ -834,6 +894,88 @@ function WhatsAppInboxPage() {
           </div>
         </section>
       </div>
+      {showNewContactModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-800 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
+              <h2 className="text-base font-semibold text-slate-100">Novo Contato WhatsApp</h2>
+              <button
+                type="button"
+                onClick={() => setShowNewContactModal(false)}
+                className="text-slate-400 hover:text-slate-200"
+                aria-label="Fechar"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form className="space-y-4 px-6 py-5" onSubmit={handleStartNewConversation}>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">
+                  Telefone (com DDD) <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={newContactPhone}
+                  onChange={(event) => setNewContactPhone(event.target.value)}
+                  placeholder="Ex: 11987654321"
+                  required
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+                <p className="mt-1 text-[11px] text-slate-500">Só dígitos ou com +55. Ex: 11987654321 ou 5511987654321</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Nome do contato</label>
+                <input
+                  type="text"
+                  value={newContactName}
+                  onChange={(event) => setNewContactName(event.target.value)}
+                  placeholder="Ex: João Silva (opcional)"
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">
+                  Mensagem <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={newContactMessage}
+                  onChange={(event) => setNewContactMessage(event.target.value)}
+                  placeholder="Digite a mensagem inicial..."
+                  required
+                  className="w-full resize-none rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              {errorMessage && (
+                <p className="rounded-lg border border-rose-700 bg-rose-950 px-3 py-2 text-xs text-rose-300">{errorMessage}</p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowNewContactModal(false)}
+                  className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingNewContact || !newContactPhone.trim() || !newContactMessage.trim()}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-600"
+                >
+                  {sendingNewContact ? 'Enviando...' : 'Enviar Mensagem'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

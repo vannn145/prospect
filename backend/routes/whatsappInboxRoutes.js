@@ -6,6 +6,7 @@ const {
   markConversationAsRead,
   updateConversationTag,
   sendConversationReply,
+  startNewConversation,
 } = require('../services/whatsappInboxService');
 
 const router = express.Router();
@@ -78,6 +79,21 @@ router.patch('/conversations/:waId/tag', async (req, res, next) => {
     return res.json({
       message: 'Tag da conversa atualizada com sucesso.',
       conversation: updatedConversation,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/conversations/new', async (req, res, next) => {
+  try {
+    const { phone, name, message } = req.body || {};
+
+    const result = await startNewConversation({ phone, name, message });
+
+    return res.json({
+      message: 'Mensagem enviada com sucesso.',
+      ...result,
     });
   } catch (error) {
     return next(error);
