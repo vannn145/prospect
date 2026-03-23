@@ -3,6 +3,7 @@ const axios = require('axios');
 const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 const NEARBY_SEARCH_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
 const PLACE_DETAILS_URL = 'https://maps.googleapis.com/maps/api/place/details/json';
+const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
 
 const CATEGORY_LABELS = {
   atm: 'Caixa',
@@ -183,16 +184,26 @@ function getApiKey() {
   return apiKey;
 }
 
-async function geocodeCity(city) {
-  const apiKey = getApiKey();
-
-  // Tenta diferentes variações de endereço
-  const addressVariations = [
+function buildGeocodeAddressVariations(city) {
+  return [
     city,
     `${city}, Brazil`,
     `${city}, São Paulo, Brazil`,
     `${city}, SP, Brazil`,
   ];
+}
+
+function extractGoogleGeocodeError(data) {
+  const status = String(data?.status || '').trim() || 'UNKNOWN_ERROR';
+  const message = String(data?.error_message || '').trim();
+  return message ? `${status}: ${message}` : status;
+}
+
+async function geocodeCityWithGoogle(city) {
+  const apiKey = getApiKey();
+  const addressVariations = buildGeocodeAddressVariations(city);
+
+  let lastError = null;
 
   for (const address of addressVariations) {
     try {
@@ -211,13 +222,66 @@ async function geocodeCity(city) {
           longitude: location.lng,
         };
       }
+
+      lastError = extractGoogleGeocodeError(response.data);
     } catch (error) {
-      // Continua tentando próxima variação
-      continue;
+      lastError = error.response?.data
+        ? extractGoogleGeocodeError(error.response.data)
+        : error.message;
+    }
+  }
+
+  throw new Error(lastError || `Não foi possível geocodificar a cidade: ${city}`);
+}
+
+async function geocodeCityWithNominatim(city) {
+  const addressVariations = buildGeocodeAddressVariations(city);
+
+  for (const address of addressVariations) {
+    const response = await axios.get(NOMINATIM_SEARCH_URL, {
+      params: {
+        q: address,
+        format: 'jsonv2',
+        limit: 1,
+        countrycodes: 'br',
+      },
+      headers: {
+        'User-Agent': 'prospect/1.0 (city-search geocoding fallback)',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+      },
+      timeout: 15000,
+    });
+
+    if (Array.isArray(response.data) && response.data.length) {
+      const location = response.data[0];
+      return {
+        latitude: Number(location.lat),
+        longitude: Number(location.lon),
+      };
     }
   }
 
   throw new Error(`Não foi possível geocodificar a cidade: ${city}`);
+}
+
+async function geocodeCity(city) {
+  let googleError = null;
+
+  try {
+    return await geocodeCityWithGoogle(city);
+  } catch (error) {
+    googleError = error;
+  }
+
+  try {
+    return await geocodeCityWithNominatim(city);
+  } catch {
+    throw new Error(
+      googleError?.message
+        ? `Não foi possível geocodificar a cidade: ${city}. ${googleError.message}`
+        : `Não foi possível geocodificar a cidade: ${city}`
+    );
+  }
 }
 
 async function fetchNearbyPage(params) {
