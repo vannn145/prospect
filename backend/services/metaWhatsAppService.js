@@ -31,7 +31,7 @@ function resolveNormalizedPhone(phone) {
   }
 
   const defaultCountryCode = String(process.env.META_WHATSAPP_DEFAULT_COUNTRY_CODE || '55').replace(/\D/g, '') || '55';
-  const allowBrLandline = parseBoolean(process.env.META_WHATSAPP_ALLOW_BR_LANDLINE, false);
+  const allowBrLandline = parseBoolean(process.env.META_WHATSAPP_ALLOW_BR_LANDLINE, true);
 
   const normalized = digits.length <= 11
     ? `${defaultCountryCode}${digits}`
