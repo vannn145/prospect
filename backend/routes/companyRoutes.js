@@ -9,6 +9,7 @@ const {
   markAsContacted,
   getStats,
   getCompanyById,
+  createCompanyManual,
 } = require('../services/companyRepositoryService');
 const {
   enrichCompanyInstagram,
@@ -458,6 +459,16 @@ router.post('/search', async (req, res, next) => {
       message: 'Busca concluída com sucesso.',
       ...result,
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/companies/manual', async (req, res, next) => {
+  try {
+    const { name, phone, city, category, address, website, status_site } = req.body || {};
+    const company = await createCompanyManual({ name, phone, city, category, address, website, status_site });
+    return res.status(201).json({ message: 'Cliente cadastrado com sucesso.', company });
   } catch (error) {
     return next(error);
   }

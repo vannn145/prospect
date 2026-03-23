@@ -358,8 +358,51 @@ async function recalculatePriorityScores() {
   };
 }
 
+async function createCompanyManual({ name, phone, city, category, address, website, status_site }) {
+  const sanitized = {
+    name: sanitizeText(name),
+    phone: sanitizeText(phone),
+    city: sanitizeText(city),
+    category: sanitizeText(category),
+    address: sanitizeText(address),
+    website: sanitizeText(website),
+    status_site: sanitizeText(status_site) || 'sem_site',
+  };
+
+  if (!sanitized.name) throw Object.assign(new Error('Nome é obrigatório.'), { statusCode: 400 });
+  if (!sanitized.city) throw Object.assign(new Error('Cidade é obrigatória.'), { statusCode: 400 });
+  if (!sanitized.category) throw Object.assign(new Error('Categoria é obrigatória.'), { statusCode: 400 });
+
+  const validStatuses = ['sem_site', 'site_fraco', 'site_ok'];
+  if (!validStatuses.includes(sanitized.status_site)) sanitized.status_site = 'sem_site';
+
+  // Gera place_id único para cadastros manuais
+  const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const placeId = `manual_${uniqueSuffix}`;
+
+  const sql = `
+    INSERT INTO companies (name, phone, address, city, category, website, status_site, place_id, reviews, priority_score)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0)
+    RETURNING *
+  `;
+
+  const result = await query(sql, [
+    sanitized.name,
+    sanitized.phone,
+    sanitized.address,
+    sanitized.city,
+    sanitized.category,
+    sanitized.website,
+    sanitized.status_site,
+    placeId,
+  ]);
+
+  return mapCompany(result.rows[0]);
+}
+
 module.exports = {
   upsertCompany,
+  createCompanyManual,
   getCompanies,
   getCompaniesPaginated,
   getCompanyPhonesPaginated,

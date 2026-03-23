@@ -10,7 +10,9 @@ import {
   enrichMissingInstagrams,
   fetchMetaWhatsAppConfig,
   sendMetaWhatsAppToCompany,
+  createCompanyManual,
 } from '../api/client';
+import { CATEGORY_OPTIONS } from '../utils/labels';
 import LeadsTable from '../components/LeadsTable';
 import SearchForm from '../components/SearchForm';
 import StatCard from '../components/StatCard';
@@ -88,6 +90,14 @@ function DashboardPage() {
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    name: '', phone: '', city: '', category: 'dentist',
+    address: '', website: '', status_site: 'sem_site',
+  });
+
   const hasSearchScope = Boolean(String(searchScope.city || '').trim() || String(searchScope.category || '').trim());
 
   const loadStats = useCallback(async () => {
@@ -387,6 +397,29 @@ function DashboardPage() {
     setErrorMessage('');
   }
 
+  function handleManualFormChange(event) {
+    const { name, value } = event.target;
+    setManualForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function handleManualSubmit(event) {
+    event.preventDefault();
+    setManualLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+    try {
+      await createCompanyManual(manualForm);
+      setShowManualModal(false);
+      setManualForm({ name: '', phone: '', city: '', category: 'dentist', address: '', website: '', status_site: 'sem_site' });
+      setSuccessMessage('Cliente cadastrado com sucesso!');
+      await Promise.all([loadStats(), loadCompanies()]);
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setManualLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-900 pb-10">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-6">
@@ -409,10 +442,46 @@ function DashboardPage() {
         )}
 
         <section className="grid gap-4 md:grid-cols-4">
-          <StatCard title="Total empresas" value={loadingStats ? '...' : stats.total_empresas} />
-          <StatCard title="Sem site" value={loadingStats ? '...' : stats.sem_site} />
-          <StatCard title="Site fraco" value={loadingStats ? '...' : stats.site_fraco} />
-          <StatCard title="Contatadas" value={loadingStats ? '...' : stats.contatadas} />
+          <StatCard
+            title="Total empresas"
+            value={loadingStats ? '...' : stats.total_empresas}
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M4 21V7l8-4 8 4v14M9 21V13h6v8" />
+              </svg>
+            }
+          />
+          <StatCard
+            title="Sem site"
+            value={loadingStats ? '...' : stats.sem_site}
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                <circle cx="12" cy="12" r="9" strokeLinecap="round" />
+                <path strokeLinecap="round" d="M4.5 9h15M4.5 15h15" />
+                <path strokeLinecap="round" d="M3 3l18 18" />
+              </svg>
+            }
+          />
+          <StatCard
+            title="Site fraco"
+            value={loadingStats ? '...' : stats.site_fraco}
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2 20h2v-4H2v4zm4 0h2v-7H6v7zm4 0h2v-10h-2v10zm4 0h2v-5h-2v5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 20h2v-2h-2v2z" />
+              </svg>
+            }
+          />
+          <StatCard
+            title="Contatadas"
+            value={loadingStats ? '...' : stats.contatadas}
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+                <circle cx="12" cy="12" r="9" strokeLinecap="round" />
+              </svg>
+            }
+          />
         </section>
 
         <section className="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm">
@@ -425,7 +494,19 @@ function DashboardPage() {
 
         <section className="space-y-4 rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-slate-200">Lista de contatos</h2>
+              <button
+                type="button"
+                onClick={() => setShowManualModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16M4 12h16" />
+                </svg>
+                Cadastrar cliente
+              </button>
+            </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {hasSearchScope && (
@@ -585,6 +666,132 @@ function DashboardPage() {
           )}
         </section>
       </div>
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-800 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
+              <h2 className="text-base font-semibold text-slate-100">Cadastrar cliente manualmente</h2>
+              <button
+                type="button"
+                onClick={() => setShowManualModal(false)}
+                className="text-slate-400 hover:text-slate-200"
+                aria-label="Fechar"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form className="grid grid-cols-1 gap-4 px-6 py-5 sm:grid-cols-2" onSubmit={handleManualSubmit}>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">
+                  Nome <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text" name="name" required value={manualForm.name}
+                  onChange={handleManualFormChange}
+                  placeholder="Ex: Clínica Dr. João"
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">
+                  Cidade <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text" name="city" required value={manualForm.city}
+                  onChange={handleManualFormChange}
+                  placeholder="Ex: São Paulo"
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">
+                  Categoria <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  name="category" value={manualForm.category}
+                  onChange={handleManualFormChange}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 focus:border-teal-400 focus:outline-none"
+                >
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Telefone</label>
+                <input
+                  type="tel" name="phone" value={manualForm.phone}
+                  onChange={handleManualFormChange}
+                  placeholder="Ex: 11987654321"
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Status do site</label>
+                <select
+                  name="status_site" value={manualForm.status_site}
+                  onChange={handleManualFormChange}
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 focus:border-teal-400 focus:outline-none"
+                >
+                  <option value="sem_site">Sem site</option>
+                  <option value="site_fraco">Site fraco</option>
+                  <option value="site_ok">Site ok</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Endereço</label>
+                <input
+                  type="text" name="address" value={manualForm.address}
+                  onChange={handleManualFormChange}
+                  placeholder="Endereço completo (opcional)"
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-300">Site</label>
+                <input
+                  type="url" name="website" value={manualForm.website}
+                  onChange={handleManualFormChange}
+                  placeholder="https://... (opcional)"
+                  className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                />
+              </div>
+
+              {errorMessage && (
+                <div className="sm:col-span-2">
+                  <p className="rounded-lg border border-rose-700 bg-rose-950 px-3 py-2 text-xs text-rose-300">{errorMessage}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => setShowManualModal(false)}
+                  className="rounded-lg border border-slate-600 bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-600"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={manualLoading}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-600"
+                >
+                  {manualLoading ? 'Salvando...' : 'Cadastrar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
