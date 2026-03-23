@@ -4,6 +4,7 @@ const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 const NEARBY_SEARCH_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
 const PLACE_DETAILS_URL = 'https://maps.googleapis.com/maps/api/place/details/json';
 const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
 const CATEGORY_LABELS = {
   atm: 'Caixa',
@@ -53,6 +54,52 @@ const CATEGORY_LABELS = {
 
 const CATEGORY_ALIASES = {
   accounting: 'accountant',
+};
+
+const OSM_CATEGORY_FILTERS = {
+  atm: [['amenity', 'atm']],
+  bank: [['amenity', 'bank']],
+  bar: [['amenity', 'bar']],
+  cafe: [['amenity', 'cafe']],
+  car_dealer: [['shop', 'car']],
+  dentist: [['amenity', 'dentist']],
+  doctor: [['amenity', 'doctors'], ['healthcare', 'doctor']],
+  hospital: [['amenity', 'hospital']],
+  convenience_store: [['shop', 'convenience']],
+  shopping_mall: [['shop', 'mall']],
+  lawyer: [['office', 'lawyer']],
+  restaurant: [['amenity', 'restaurant']],
+  spa: [['leisure', 'spa'], ['beauty', 'spa']],
+  hair_care: [['shop', 'hairdresser']],
+  book_store: [['shop', 'books']],
+  bakery: [['shop', 'bakery']],
+  pharmacy: [['amenity', 'pharmacy']],
+  shoe_store: [['shop', 'shoes']],
+  jewelry_store: [['shop', 'jewelry']],
+  furniture_store: [['shop', 'furniture']],
+  supermarket: [['shop', 'supermarket']],
+  gym: [['leisure', 'fitness_centre']],
+  beauty_salon: [['shop', 'beauty'], ['amenity', 'beauty_salon']],
+  pet_store: [['shop', 'pet']],
+  veterinary_care: [['amenity', 'veterinary']],
+  physiotherapist: [['healthcare', 'physiotherapist']],
+  real_estate_agency: [['office', 'estate_agent']],
+  accountant: [['office', 'accountant']],
+  accounting: [['office', 'accountant']],
+  insurance_agency: [['office', 'insurance']],
+  car_repair: [['shop', 'car_repair']],
+  car_wash: [['amenity', 'car_wash']],
+  gas_station: [['amenity', 'fuel']],
+  electrician: [['craft', 'electrician']],
+  plumber: [['craft', 'plumber']],
+  hardware_store: [['shop', 'doityourself']],
+  clothing_store: [['shop', 'clothes']],
+  electronics_store: [['shop', 'electronics']],
+  home_goods_store: [['shop', 'houseware']],
+  florist: [['shop', 'florist']],
+  laundry: [['shop', 'laundry'], ['amenity', 'laundry']],
+  school: [['amenity', 'school']],
+  travel_agency: [['shop', 'travel_agency'], ['office', 'travel_agent']],
 };
 
 function getSafePositiveInt(value, fallback, { min = 1, max = 20 } = {}) {
@@ -133,6 +180,103 @@ function getMockInstagram(index, city, category) {
 function normalizeGooglePlaceType(category) {
   const normalized = String(category || '').trim().toLowerCase();
   return CATEGORY_ALIASES[normalized] || normalized;
+}
+
+function getOsmFiltersForCategory(category) {
+  const normalized = normalizeGooglePlaceType(category);
+  return OSM_CATEGORY_FILTERS[normalized] || [['office', normalized]];
+}
+
+function getOsmTag(tags, keys) {
+  for (const key of keys) {
+    const value = tags?.[key];
+    if (value != null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+
+  return null;
+}
+
+function formatOsmAddress(tags, fallbackCity) {
+  const street = [tags?.['addr:street'], tags?.['addr:housenumber']].filter(Boolean).join(', ');
+  const district = getOsmTag(tags, ['addr:suburb', 'addr:neighbourhood']);
+  const city = getOsmTag(tags, ['addr:city', 'addr:town', 'addr:village']) || fallbackCity;
+  const state = getOsmTag(tags, ['addr:state']);
+
+  return [street, district, city, state].filter(Boolean).join(' - ') || null;
+}
+
+function buildOverpassQuery({ latitude, longitude, radius, category }) {
+  const filters = getOsmFiltersForCategory(category);
+  const searchRadius = Math.max(300, Math.min(Number(radius) || 5000, 50000));
+
+  const blocks = filters.flatMap(([key, value]) => [
+    `node["${key}"="${value}"](around:${searchRadius},${latitude},${longitude});`,
+    `way["${key}"="${value}"](around:${searchRadius},${latitude},${longitude});`,
+    `relation["${key}"="${value}"](around:${searchRadius},${latitude},${longitude});`,
+  ]);
+
+  return `[out:json][timeout:25];(${blocks.join('')});out center tags;`;
+}
+
+async function fetchPlacesByOsm({ city, category, radius = 5000, maxPages = 3 }) {
+  const geocoded = await geocodeCityWithNominatim(city);
+  const query = buildOverpassQuery({
+    latitude: geocoded.latitude,
+    longitude: geocoded.longitude,
+    radius,
+    category,
+  });
+
+  const response = await axios.post(OVERPASS_URL, query, {
+    headers: {
+      'Content-Type': 'text/plain;charset=UTF-8',
+      'User-Agent': 'prospect/1.0 (osm-overpass-search)',
+    },
+    timeout: 30000,
+  });
+
+  const elements = Array.isArray(response.data?.elements) ? response.data.elements : [];
+  const uniqueById = new Map();
+  const maxItems = Math.max(10, Math.min(Number(maxPages || 3) * 20, 80));
+
+  for (const element of elements) {
+    const tags = element.tags || {};
+    const latitude = element.lat ?? element.center?.lat ?? null;
+    const longitude = element.lon ?? element.center?.lon ?? null;
+    const name = getOsmTag(tags, ['name', 'brand', 'operator']);
+
+    if (!name || latitude == null || longitude == null) {
+      continue;
+    }
+
+    const placeId = `osm-${element.type}-${element.id}`;
+    if (uniqueById.has(placeId)) {
+      continue;
+    }
+
+    uniqueById.set(placeId, {
+      name,
+      phone_number: getOsmTag(tags, ['phone', 'contact:phone', 'contact:mobile']),
+      address: formatOsmAddress(tags, city),
+      city,
+      category,
+      place_id: placeId,
+      website: getOsmTag(tags, ['website', 'contact:website']),
+      rating: null,
+      total_reviews: 0,
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      source: 'osm',
+    });
+
+    if (uniqueById.size >= maxItems) {
+      break;
+    }
+  }
+
+  return [...uniqueById.values()];
 }
 
 function generateMockPlaces({ city, category, radius = 5000 }) {
@@ -430,9 +574,19 @@ async function fetchPlacesByCityAndCategory({ city, category, radius = 5000, max
 
     return detailedResults;
   } catch (error) {
-    console.warn(
-      `[googlePlacesService] fallback para mock em ${city}/${category}: ${error.message}`
-    );
+    console.warn(`[googlePlacesService] fallback Google->OSM em ${city}/${category}: ${error.message}`);
+
+    try {
+      const osmResults = await fetchPlacesByOsm({ city, category, radius, maxPages });
+      if (osmResults.length) {
+        return osmResults;
+      }
+    } catch (osmError) {
+      console.warn(
+        `[googlePlacesService] fallback OSM->mock em ${city}/${category}: ${osmError.message}`
+      );
+    }
+
     return generateMockPlaces({ city, category, radius, maxPages });
   }
 }
