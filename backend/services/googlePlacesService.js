@@ -186,23 +186,38 @@ function getApiKey() {
 async function geocodeCity(city) {
   const apiKey = getApiKey();
 
-  const response = await axios.get(GEOCODE_URL, {
-    params: {
-      address: city,
-      key: apiKey,
-    },
-    timeout: 15000,
-  });
+  // Tenta diferentes variações de endereço
+  const addressVariations = [
+    city,
+    `${city}, Brazil`,
+    `${city}, São Paulo, Brazil`,
+    `${city}, SP, Brazil`,
+  ];
 
-  if (response.data.status !== 'OK' || !response.data.results.length) {
-    throw new Error(`Não foi possível geocodificar a cidade: ${city}`);
+  for (const address of addressVariations) {
+    try {
+      const response = await axios.get(GEOCODE_URL, {
+        params: {
+          address,
+          key: apiKey,
+        },
+        timeout: 15000,
+      });
+
+      if (response.data.status === 'OK' && response.data.results.length) {
+        const location = response.data.results[0].geometry.location;
+        return {
+          latitude: location.lat,
+          longitude: location.lng,
+        };
+      }
+    } catch (error) {
+      // Continua tentando próxima variação
+      continue;
+    }
   }
 
-  const location = response.data.results[0].geometry.location;
-  return {
-    latitude: location.lat,
-    longitude: location.lng,
-  };
+  throw new Error(`Não foi possível geocodificar a cidade: ${city}`);
 }
 
 async function fetchNearbyPage(params) {
