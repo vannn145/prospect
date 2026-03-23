@@ -380,54 +380,61 @@ async function fetchPlacesByCityAndCategory({ city, category, radius = 5000, max
     return generateMockPlaces({ city, category, radius, maxPages });
   }
 
-  const geocoded = await geocodeCity(city);
+  try {
+    const geocoded = await geocodeCity(city);
 
-  const nearbyPlaces = await fetchNearbyPlaces({
-    latitude: geocoded.latitude,
-    longitude: geocoded.longitude,
-    radius,
-    category,
-    maxPages,
-  });
+    const nearbyPlaces = await fetchNearbyPlaces({
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
+      radius,
+      category,
+      maxPages,
+    });
 
-  const uniqueByPlaceId = new Map();
+    const uniqueByPlaceId = new Map();
 
-  for (const place of nearbyPlaces) {
-    if (place.place_id && !uniqueByPlaceId.has(place.place_id)) {
-      uniqueByPlaceId.set(place.place_id, place);
+    for (const place of nearbyPlaces) {
+      if (place.place_id && !uniqueByPlaceId.has(place.place_id)) {
+        uniqueByPlaceId.set(place.place_id, place);
+      }
     }
+
+    const allUnique = [...uniqueByPlaceId.values()];
+    const detailsConcurrency = getSafePositiveInt(
+      process.env.GOOGLE_PLACE_DETAILS_CONCURRENCY,
+      6,
+      { min: 1, max: 15 }
+    );
+
+    const detailedResults = await processWithConcurrency(
+      allUnique,
+      async (place) => {
+        const details = await fetchPlaceDetails(place.place_id);
+
+        return {
+          name: details?.name || place.name || null,
+          phone_number: details?.phone_number || null,
+          address: details?.address || place.vicinity || null,
+          city,
+          category,
+          place_id: place.place_id,
+          website: details?.website || null,
+          rating: details?.rating || place.rating || null,
+          total_reviews: details?.total_reviews || place.user_ratings_total || 0,
+          latitude: details?.latitude || place.geometry?.location?.lat || null,
+          longitude: details?.longitude || place.geometry?.location?.lng || null,
+        };
+      },
+      detailsConcurrency
+    );
+
+    return detailedResults;
+  } catch (error) {
+    console.warn(
+      `[googlePlacesService] fallback para mock em ${city}/${category}: ${error.message}`
+    );
+    return generateMockPlaces({ city, category, radius, maxPages });
   }
-
-  const allUnique = [...uniqueByPlaceId.values()];
-  const detailsConcurrency = getSafePositiveInt(
-    process.env.GOOGLE_PLACE_DETAILS_CONCURRENCY,
-    6,
-    { min: 1, max: 15 }
-  );
-
-  const detailedResults = await processWithConcurrency(
-    allUnique,
-    async (place) => {
-      const details = await fetchPlaceDetails(place.place_id);
-
-      return {
-        name: details?.name || place.name || null,
-        phone_number: details?.phone_number || null,
-        address: details?.address || place.vicinity || null,
-        city,
-        category,
-        place_id: place.place_id,
-        website: details?.website || null,
-        rating: details?.rating || place.rating || null,
-        total_reviews: details?.total_reviews || place.user_ratings_total || 0,
-        latitude: details?.latitude || place.geometry?.location?.lat || null,
-        longitude: details?.longitude || place.geometry?.location?.lng || null,
-      };
-    },
-    detailsConcurrency
-  );
-
-  return detailedResults;
 }
 
 module.exports = {
